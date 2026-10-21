@@ -128,9 +128,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.of(context).size.width > 900;
-    final form = ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
+    final formItems = <Widget>[
         Text('Agenda anillada 15 mm', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
         Text('Interior doble cara (24 hojas, 48 páginas) + portada en hoja aparte. Margen de anillos: 15 mm.',
@@ -197,12 +195,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
         const SizedBox(height: 4),
         Text('Puedes exportar sin arte para revisar las páginas; la portada queda con fondo liso.',
             style: Theme.of(context).textTheme.bodySmall),
-      ],
-    );
+    ];
 
-    final preview = ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
+    final previewItems = <Widget>[
         ArtPreview(
           label: 'Personaje (foto → ilustración)',
           bytes: _character,
@@ -217,20 +212,26 @@ class _AgendaScreenState extends State<AgendaScreen> {
           onRegenerate: _genCover,
           height: 420,
         ),
-      ],
-    );
+    ];
 
     if (!wide) {
-      return ListView(children: [
-        SizedBox(height: 760, child: form),
-        const Divider(),
-        SizedBox(height: 760, child: preview),
-      ]);
+      // Celular / iPad vertical: todo en una sola lista, con la vista previa
+      // justo debajo de los botones.
+      final genIdx = formItems.length - 5; // antes del botón "Generar"
+      return ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          ...formItems.sublist(0, genIdx),
+          ...previewItems,
+          ...formItems.sublist(genIdx),
+          const SizedBox(height: 24),
+        ],
+      );
     }
     return Row(children: [
-      Expanded(flex: 5, child: form),
+      Expanded(flex: 5, child: ListView(padding: const EdgeInsets.all(20), children: formItems)),
       const VerticalDivider(width: 1),
-      Expanded(flex: 4, child: preview),
+      Expanded(flex: 4, child: ListView(padding: const EdgeInsets.all(20), children: previewItems)),
     ]);
   }
 }

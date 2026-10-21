@@ -91,9 +91,7 @@ class _PostitScreenState extends State<PostitScreen> {
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.of(context).size.width > 900;
-    final form = ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
+    final formItems = <Widget>[
         Text(p.label, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
         Text('${p.perSheet} por hoja carta, con marcas de corte. La IA dibuja el marco y el personaje; la pauta y el título los pone la app.',
@@ -146,29 +144,30 @@ class _PostitScreenState extends State<PostitScreen> {
               : const Icon(Icons.picture_as_pdf),
           label: const Text('Exportar PDF (hoja carta)'),
         ),
-      ],
-    );
+    ];
 
-    final preview = ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
+    final previewItems = <Widget>[
         ArtPreview(label: 'Marco generado', bytes: _frame, busy: _busy, height: 420),
         Text('La pauta (${postitContentLabels[_content]}) y el título "${_title.isEmpty ? 'sin título' : _title}" se agregan al exportar.',
             style: Theme.of(context).textTheme.bodySmall),
-      ],
-    );
+    ];
 
     if (!wide) {
-      return ListView(children: [
-        SizedBox(height: 720, child: form),
-        const Divider(),
-        SizedBox(height: 520, child: preview),
-      ]);
+      final genIdx = formItems.length - 3; // antes del botón "Generar"
+      return ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          ...formItems.sublist(0, genIdx),
+          ...previewItems,
+          ...formItems.sublist(genIdx),
+          const SizedBox(height: 24),
+        ],
+      );
     }
     return Row(children: [
-      Expanded(flex: 5, child: form),
+      Expanded(flex: 5, child: ListView(padding: const EdgeInsets.all(20), children: formItems)),
       const VerticalDivider(width: 1),
-      Expanded(flex: 4, child: preview),
+      Expanded(flex: 4, child: ListView(padding: const EdgeInsets.all(20), children: previewItems)),
     ]);
   }
 }
