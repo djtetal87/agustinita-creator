@@ -1,0 +1,136 @@
+name: Build Agustinita Creator
+
+# Genera:
+#  - macOS: .dmg sin firmar (abrir con clic derecho → Abrir la primera vez)
+#  - iOS/iPadOS: .ipa sin firmar (Sideloadly)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+env:
+  APP_NAME: Agustinita Creator
+  PROJECT: agustinita_creator
+  ORG: cl.agustinita
+
+jobs:
+  macos:
+    name: macOS .dmg
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+
+      - name: Version
+        id: v
+        run: |
+          echo "version=$(sed -n 's/^version: *\(.*\)/\1/p' pubspec.yaml | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: macOS scaffold + icon
+        run: |
+          set -euo pipefail
+          flutter create --platforms macos --org "$ORG" --project-name "$PROJECT" /tmp/scaffold
+          cp -R /tmp/scaffold/macos ./macos
+          # Nombre visible
+          sed -i '' "s/PRODUCT_NAME = .*/PRODUCT_NAME = $APP_NAME;/" macos/Runner/Configs/AppInfo.xcconfig
+          sed -i '' "s/PRODUCT_COPYRIGHT = .*/PRODUCT_COPYRIGHT = Agustinita Papelería;/" macos/Runner/Configs/AppInfo.xcconfig
+          # Permisos: leer/escribir archivos elegidos por el usuario (file_selector) y red (fal.ai)
+          for f in macos/Runner/DebugProfile.entitlements macos/Runner/Release.entitlements; do
+            /usr/libexec/PlistBuddy -c "Add :com.apple.security.network.client bool true" "$f" || true
+            /usr/libexec/PlistBuddy -c "Add :com.apple.security.files.user-selected.read-write bool true" "$f" || true
+          done
+          # Ícono
+          D=macos/Runner/Assets.xcassets/AppIcon.appiconset
+          for s in 16 32 64 128 256 512 1024; do
+            sips -z $s $s assets/icon.png --out "$D/app_icon_$s.png" >/dev/null
+          done
+
+      - name: Build
+        run: |
+          set -o pipefail
+          flutter pub get
+          flutter build macos --release 2>&1 | tee build.log
+
+      - name: Log on failure
+        if: failure()
+        run: |
+          { echo '```'; tail -n 150 build.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Make .dmg
+        env: { VERSION: "${{ steps.v.outputs.version }}" }
+        run: |
+          set -euo pipefail
+          APP="build/macos/Build/Products/Release/$APP_NAME.app"
+          mkdir -p stage dmgroot
+          cp -R "$APP" dmgroot/
+          ln -s /Applications dmgroot/Applications
+          hdiutil create -volname "$APP_NAME" -srcfolder dmgroot -ov -format UDZO "stage/AgustinitaCreator-$VERSION-macos.dmg"
+          ls -l stage
+
+      - uses: actions/upload-artifact@v4
+        with: { name: AgustinitaCreator-macos, path: stage/*, if-no-files-found: error }
+
+  ios:
+    name: iPad .ipa
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+
+      - name: Version
+        id: v
+        run: |
+          echo "version=$(sed -n 's/^version: *\(.*\)/\1/p' pubspec.yaml | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: iOS scaffold + icon
+        run: |
+          set -euo pipefail
+          flutter create --platforms ios --org "$ORG" --project-name "$PROJECT" /tmp/scaffold
+          cp -R /tmp/scaffold/ios ./ios
+          PL=ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName '$APP_NAME'" "$PL" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string '$APP_NAME'" "$PL"
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Para elegir la foto que se convierte en personaje.'" "$PL" || true
+          /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" "$PL" || true
+          /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" "$PL" || true
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PL" || true
+          sed -i '' "s/^# platform :ios.*/platform :ios, '13.0'/" ios/Podfile || true
+          sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g" ios/Runner.xcodeproj/project.pbxproj
+          # Ícono 1024 (Xcode genera el resto)
+          D=ios/Runner/Assets.xcassets/AppIcon.appiconset
+          cp assets/icon.png "$D/Icon-App-1024x1024@1x.png"
+          for f in "$D"/Icon-App-*; do
+            base=$(basename "$f")
+            case "$base" in Icon-App-1024x1024@1x.png) continue;; esac
+            # tamaño = <w>x<h>@<scale>
+            w=$(echo "$base" | sed -E 's/Icon-App-([0-9.]+)x.*/\1/'); sc=$(echo "$base" | sed -E 's/.*@([0-9])x.*/\1/')
+            px=$(python3 -c "print(int(round($w*$sc)))")
+            sips -z $px $px assets/icon.png --out "$f" >/dev/null
+          done
+
+      - name: Build (unsigned)
+        run: |
+          set -o pipefail
+          flutter pub get
+          flutter build ios --release --no-codesign 2>&1 | tee build.log
+
+      - name: Log on failure
+        if: failure()
+        run: |
+          { echo '```'; tail -n 150 build.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stage .ipa
+        env: { VERSION: "${{ steps.v.outputs.version }}" }
+        run: |
+          set -euo pipefail
+          mkdir -p stage payload/Payload
+          cp -R build/ios/iphoneos/Runner.app payload/Payload/
+          (cd payload && ditto -c -k --keepParent Payload "../stage/AgustinitaCreator-$VERSION-ios-arm64.ipa")
+          ls -l stage
+
+      - uses: actions/upload-artifact@v4
+        with: { name: AgustinitaCreator-ios, path: stage/*, if-no-files-found: error }

@@ -1,0 +1,9 @@
+build/
+.dart_tool/
+ios/Flutter/ephemeral/
+ios/Pods/
+macos/Flutter/ephemeral/
+macos/Pods/
+*.ipa
+*.dmg
+.DS_Store
