@@ -1,7 +1,7 @@
 name: agustinita_creator
 description: Agustinita Creator — diseño de agendas y post-its personalizados con IA (Agustinita Papelería).
 publish_to: "none"
-version: 0.1.1+2
+version: 0.1.2+3
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

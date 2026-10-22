@@ -113,11 +113,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
       final b = AgendaBuilder(job, fonts);
       final slug = _name.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
       final interior = await b.buildInterior();
-      final p1 = await exportPdf(interior, 'Agenda_${slug}_Interior_DobleCara.pdf');
-      if (p1 == null) return;
       final cover = await b.buildCover();
-      await exportPdf(cover, 'Agenda_${slug}_Portada.pdf');
-      if (mounted) toast(context, 'PDFs exportados.');
+      final paths = await exportPdfs({
+        'Agenda_${slug}_Interior_DobleCara.pdf': interior,
+        'Agenda_${slug}_Portada.pdf': cover,
+      });
+      if (paths != null && mounted) toast(context, 'PDFs exportados (interior + portada).');
     } catch (e) {
       if (mounted) toast(context, 'Error al exportar: $e');
     } finally {
