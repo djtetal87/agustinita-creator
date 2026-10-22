@@ -56,7 +56,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   double _ovSize = 0.18;
   double _ovOpacity = 0.30;
   bool _busyPreview = false;
-  bool _mirrorBack = false;
+  bool _mirrorBack = true;
+  bool _singlePages = true;
 
   Uint8List? _photo;
   Uint8List? _character;
@@ -223,7 +224,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       final job = _job(await PdfFonts.load());
       final b = AgendaBuilder(job, await PdfFonts.load());
       final pdf = await b.buildInterior();
-      final total = ((job.plannerPages?.length ?? 0) / 2).ceil();
+      final total = _singlePages ? (job.plannerPages?.length ?? 0) : ((job.plannerPages?.length ?? 0) / 2).ceil();
       final want = <int>{0, 1, 2, 3, total ~/ 2, (total ~/ 2) + 1, total - 2, total - 1}
           .where((i) => i >= 0 && i < total).toList()..sort();
       final imgs = <Uint8List>[];
@@ -237,7 +238,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('Vista previa (${imgs.length} hojas de $total)', style: Theme.of(context).textTheme.titleMedium),
+              Text('Vista previa (${imgs.length} ${_singlePages ? 'páginas' : 'hojas'} de $total)', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               SizedBox(
                 height: 360,
@@ -247,7 +248,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       padding: const EdgeInsets.only(right: 8),
                       child: Column(children: [
                         Expanded(child: InteractiveViewer(child: Image.memory(imgs[i]))),
-                        Text('Hoja ${want[i] + 1}', style: Theme.of(context).textTheme.bodySmall),
+                        Text('${_singlePages ? 'Pág.' : 'Hoja'} ${want[i] + 1}', style: Theme.of(context).textTheme.bodySmall),
                       ]),
                     ),
                 ]),
@@ -279,6 +280,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         mirrorBack: _mirrorBack,
         spec: AgendaSpec.byId(_sizeId),
         overlay: CharacterOverlay(enabled: _ovEnabled, corner: _ovCorner, sizePct: _ovSize, opacity: _ovOpacity),
+        singlePages: _singlePages,
       );
 
   /// Flujo completo: personaje (si hay foto) → portada → marco interior → separadores.
@@ -331,7 +333,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       // la hoja de compartir (que puede quedarse abierta un rato).
       if (mounted) setState(() => _busyExport = false);
       final paths = await exportPdfs({
-        'Agenda_${slug}_Interior_DobleCara.pdf': interior,
+        (_singlePages ? 'Agenda_${slug}_Paginas_A5_DobleCara.pdf' : 'Agenda_${slug}_Interior_2xHoja.pdf'): interior,
         'Agenda_${slug}_Portada.pdf': cover,
       });
       if (paths != null && mounted) toast(context, 'PDFs exportados (interior + portada).');
@@ -605,10 +607,20 @@ class _AgendaScreenState extends State<AgendaScreen> {
               ]),
             ),
         ],
+        const SectionTitle('Formato del PDF'),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Margen de anillos a la derecha en el reverso'),
-          subtitle: const Text('Déjalo apagado para imprimir igual que la agenda de Agustina (margen a la izquierda en ambas caras).'),
+          title: const Text('Una página por hoja (para doble cara)'),
+          subtitle: Text(_singlePages
+              ? 'Cada hoja del PDF es una página ${AgendaSpec.byId(_sizeId).id == 'a5' ? 'A5' : 'media carta'}. Imprime a doble cara, sin cortar.'
+              : 'Dos páginas por hoja ${AgendaSpec.byId(_sizeId).id == 'a5' ? 'A4' : 'carta'} horizontal, para cortar al medio.'),
+          value: _singlePages,
+          onChanged: (v) => setState(() => _singlePages = v),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Anillos al lado contrario en el reverso'),
+          subtitle: const Text('Encendido: al imprimir a doble cara, el anillado queda siempre en el mismo borde físico. Apágalo solo si imprimes una cara.'),
           value: _mirrorBack,
           onChanged: (v) => setState(() => _mirrorBack = v),
         ),

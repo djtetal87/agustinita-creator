@@ -27,6 +27,9 @@ class AgendaJob {
   final AgendaSpec spec; // A5 o media carta
   final Map<int, Uint8List> separatorArts; // arte por mes (1-12); si falta, separatorArt
   final CharacterOverlay overlay; // personaje semitransparente en las páginas con pauta
+  /// true: una página por hoja del PDF (A5 / media carta), para imprimir a
+  /// doble cara directo. false: 2 páginas por hoja (A4 / carta) para cortar.
+  final bool singlePages;
 
   const AgendaJob({
     required this.name,
@@ -43,6 +46,7 @@ class AgendaJob {
     this.spec = AgendaSpec.a5,
     this.separatorArts = const {},
     this.overlay = const CharacterOverlay(),
+    this.singlePages = false,
   });
 }
 
@@ -99,6 +103,7 @@ class AgendaBuilder {
   int get _pageCount => job.plannerPages?.length ?? job.pages.length;
 
   Future<Uint8List> buildInterior() async {
+    if (job.singlePages) return _buildSinglePages();
     final doc = pw.Document(title: 'Agenda ${job.name} — interior');
     var n = _pageCount;
     while (n % 4 != 0) {
@@ -107,6 +112,25 @@ class AgendaBuilder {
     for (var i = 0; i < n; i += 4) {
       doc.addPage(_sheet(i, i + 1, ringLeft: true)); // cara frontal
       doc.addPage(_sheet(i + 2, i + 3, ringLeft: !job.mirrorBack)); // reverso
+    }
+    return doc.save();
+  }
+
+  /// Una página por hoja del PDF. Páginas impares (frente): anillos a la
+  /// izquierda; pares (reverso): anillos a la derecha, para que al imprimir a
+  /// doble cara el anillado quede siempre del mismo lado físico.
+  Future<Uint8List> _buildSinglePages() async {
+    final doc = pw.Document(title: 'Agenda ${job.name} — páginas sueltas');
+    var n = _pageCount;
+    if (n.isOdd) n++;
+    for (var i = 0; i < n; i++) {
+      final front = i.isEven; // página 1, 3, 5… = frente
+      final ringLeft = front ? true : job.mirrorBack;
+      doc.addPage(pw.Page(
+        pageFormat: PdfPageFormat(sp.halfW * mm, sp.sheetH * mm),
+        margin: pw.EdgeInsets.zero,
+        build: (ctx) => _pageWidget(i, i + 1, ringLeft),
+      ));
     }
     return doc.save();
   }
