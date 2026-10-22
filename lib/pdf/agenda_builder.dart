@@ -16,6 +16,7 @@ class AgendaJob {
   final Uint8List? coverArt; // ilustración generada (portada)
   final Uint8List? characterArt; // personaje (foto → personaje) para la página del nombre
   final Uint8List? interiorArt; // marco ilustrado para todas las páginas interiores
+  final bool coverHasText; // true = la portada ya trae nombre (subida por el usuario)
   final bool mirrorBack; // margen de anillos a la derecha en el reverso
 
   const AgendaJob({
@@ -26,6 +27,7 @@ class AgendaJob {
     this.coverArt,
     this.characterArt,
     this.interiorArt,
+    this.coverHasText = false,
     this.mirrorBack = false,
   });
 }
@@ -124,8 +126,11 @@ class AgendaBuilder {
                     child: pw.Image(_interior!, fit: pw.BoxFit.cover),
                   ),
                 pw.Padding(
-                  // con marco ilustrado el contenido se aleja un poco más del borde
-                  padding: pw.EdgeInsets.all((_interior == null ? AgendaSpec.innerPad : AgendaSpec.innerPad + 6) * mm),
+                  // con marco ilustrado el contenido se aleja del borde y deja
+                  // libre la franja inferior donde asoma el personaje
+                  padding: _interior == null
+                      ? pw.EdgeInsets.all(AgendaSpec.innerPad * mm)
+                      : pw.EdgeInsets.fromLTRB(13 * mm, 11 * mm, 13 * mm, 24 * mm),
                   child: _pageBody(def, number),
                 ),
               ]),
@@ -145,7 +150,7 @@ class AgendaBuilder {
             borderRadius: pw.BorderRadius.circular(4 * mm),
           ),
           child: pw.Text(t,
-              style: pw.TextStyle(font: f.bold, fontSize: 9, color: s.titleFg)),
+              style: pw.TextStyle(font: f.title, fontSize: 10, color: s.titleFg)),
         ),
       );
 
@@ -158,23 +163,36 @@ class AgendaBuilder {
   pw.Widget _rule({double width = 0.4}) =>
       pw.Container(height: width, color: s.rule);
 
-  /// Rayado simple con paso en mm.
+  /// Rayado simple con paso en mm. Sin [count], llena el espacio disponible.
   pw.Widget _ruled(double stepMm, {int? count}) {
-    final avail = AgendaSpec.frameH - AgendaSpec.innerPad * 2 - 14; // menos título
-    final n = count ?? (avail / stepMm).floor();
-    return pw.Column(
-      children: List.generate(
-          n,
-          (i) => pw.Container(
-              height: stepMm * mm,
-              alignment: pw.Alignment.bottomCenter,
-              child: _rule())),
+    pw.Widget rows(int n) => pw.Column(
+          mainAxisSize: pw.MainAxisSize.min,
+          children: List.generate(
+              n,
+              (i) => pw.Container(
+                  height: stepMm * mm,
+                  alignment: pw.Alignment.bottomCenter,
+                  child: _rule())),
+        );
+    if (count != null) return rows(count);
+    return pw.Expanded(
+      child: pw.LayoutBuilder(
+        builder: (ctx, c) => rows(((c?.maxHeight ?? 0) / (stepMm * mm)).floor().clamp(0, 40)),
+      ),
     );
   }
+
+  /// Pauta de caligrafía que llena el espacio disponible.
+  pw.Widget _handwritingFill() => pw.Expanded(
+        child: pw.LayoutBuilder(
+          builder: (ctx, c) => _handwritingRows(((c?.maxHeight ?? 0) / (11 * mm)).floor().clamp(0, 30)),
+        ),
+      );
 
   /// Pauta de caligrafía: línea continua, punteada al medio, línea continua.
   pw.Widget _handwritingRows(int rows) {
     return pw.Column(
+      mainAxisSize: pw.MainAxisSize.min,
       children: List.generate(rows, (i) {
         return pw.Container(
           height: 11 * mm,
@@ -239,7 +257,7 @@ class AgendaBuilder {
         body = pw.Column(children: [
           _title(pageTitles[def.kind]!),
           pw.SizedBox(height: 2 * mm),
-          _handwritingRows(13),
+          _handwritingFill(),
         ]);
         break;
       case PageKind.calendar:
@@ -249,9 +267,9 @@ class AgendaBuilder {
         body = pw.Column(children: [
           _title(pageTitles[def.kind]!),
           pw.SizedBox(height: 3 * mm),
-          _box(70),
+          _box(60),
           pw.SizedBox(height: 2 * mm),
-          _handwritingRows(7),
+          _handwritingFill(),
         ]);
         break;
       case PageKind.feelings:
@@ -263,11 +281,11 @@ class AgendaBuilder {
           pw.Text('Hoy me siento: ________________', style: pw.TextStyle(font: f.regular, fontSize: 6.5, color: s.titleFg)),
           pw.SizedBox(height: 3 * mm),
           pw.Text('Porque:', style: pw.TextStyle(font: f.regular, fontSize: 6.5, color: s.titleFg)),
-          _ruled(9, count: 6),
+          _ruled(9, count: 5),
           pw.SizedBox(height: 4 * mm),
           pw.Text('Dibujo cómo me siento:', style: pw.TextStyle(font: f.regular, fontSize: 6.5, color: s.titleFg)),
           pw.SizedBox(height: 2 * mm),
-          _box(42),
+          _box(38),
         ]);
         break;
       case PageKind.therapyTasks:
@@ -276,9 +294,9 @@ class AgendaBuilder {
           pw.SizedBox(height: 3 * mm),
           pw.Text('Fecha: ________________', style: pw.TextStyle(font: f.regular, fontSize: 6.5, color: s.titleFg)),
           pw.SizedBox(height: 2 * mm),
-          for (var i = 0; i < 8; i++)
+          for (var i = 0; i < 7; i++)
             pw.Container(
-              height: 16 * mm,
+              height: 15 * mm,
               child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
                 pw.Container(
                   width: 4 * mm, height: 4 * mm,
@@ -314,7 +332,7 @@ class AgendaBuilder {
                 children: [for (final h in ['Fecha', 'Ahorré \$', 'Total \$'])
                   pw.Padding(padding: pw.EdgeInsets.all(1.5 * mm), child: pw.Text(h, style: pw.TextStyle(font: f.bold, fontSize: 6, color: s.titleFg)))],
               ),
-              for (var i = 0; i < 12; i++)
+              for (var i = 0; i < 10; i++)
                 pw.TableRow(children: [for (var c = 0; c < 3; c++) pw.SizedBox(height: 8 * mm)]),
             ],
           ),
@@ -326,9 +344,9 @@ class AgendaBuilder {
         body = pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           _title(pageTitles[def.kind]!),
           pw.SizedBox(height: 2 * mm),
-          for (var i = 1; i <= 10; i++)
+          for (var i = 1; i <= 9; i++)
             pw.Container(
-              height: 15 * mm,
+              height: 14 * mm,
               child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
                 pw.Container(width: 6 * mm, child: pw.Text('$i.', style: pw.TextStyle(font: f.bold, fontSize: 7, color: s.accent))),
                 pw.Expanded(child: _rule()),
@@ -342,7 +360,7 @@ class AgendaBuilder {
           pw.SizedBox(height: 3 * mm),
           pw.Text('Hoy quiero escribir sobre: ________________', style: pw.TextStyle(font: f.regular, fontSize: 6.5, color: s.titleFg)),
           pw.SizedBox(height: 1 * mm),
-          _handwritingRows(12),
+          _handwritingFill(),
         ]);
         break;
       case PageKind.namePage:
@@ -353,7 +371,7 @@ class AgendaBuilder {
               child: pw.Image(pw.MemoryImage(job.characterArt!), fit: pw.BoxFit.contain),
             ),
           pw.SizedBox(height: 6 * mm),
-          pw.Text(job.name, style: pw.TextStyle(font: f.bold, fontSize: 16, color: s.titleFg)),
+          pw.Text(job.name, style: pw.TextStyle(font: f.display, fontSize: 20, color: s.titleFg)),
           pw.SizedBox(height: 2 * mm),
           if (job.phrase.isNotEmpty)
             pw.Text(job.phrase, textAlign: pw.TextAlign.center,
@@ -373,7 +391,8 @@ class AgendaBuilder {
         body = pw.SizedBox();
         break;
     }
-    return pw.Stack(children: [
+    // fit expand: la Column con Expanded necesita altura acotada
+    return pw.Stack(fit: pw.StackFit.expand, children: [
       body,
       _pageNumber(number),
     ]);
@@ -386,7 +405,7 @@ class AgendaBuilder {
       case CustomLayout.ruled:
         return _ruled(9);
       case CustomLayout.handwriting:
-        return _handwritingRows(13);
+        return _handwritingFill();
       case CustomLayout.checklist:
         return pw.Column(children: [
           for (var i = 0; i < 12; i++)
@@ -439,7 +458,7 @@ class AgendaBuilder {
           ],
         );
       case CustomLayout.box:
-        return pw.Column(children: [_box(80), pw.SizedBox(height: 3 * mm), _ruled(9, count: 7)]);
+        return pw.Column(children: [_box(70), pw.SizedBox(height: 3 * mm), _ruled(9)]);
       case CustomLayout.numbered:
         return pw.Column(children: [
           for (var i = 1; i <= 12; i++)
@@ -529,11 +548,12 @@ class AgendaBuilder {
                   pw.Image(pw.MemoryImage(job.coverArt!), fit: pw.BoxFit.cover)
                 else
                   pw.Container(color: s.titleBg),
-                // nombre y frase sobre una banda blanca translúcida en el tercio inferior
+                // nombre y frase en una banda al borde inferior (no si la portada ya trae texto)
+                if (!job.coverHasText)
                 pw.Positioned(
-                  left: 10 * mm,
-                  right: 10 * mm,
-                  bottom: 22 * mm,
+                  left: 8 * mm,
+                  right: 8 * mm,
+                  bottom: 10 * mm,
                   child: pw.Container(
                     padding: pw.EdgeInsets.symmetric(vertical: 4 * mm, horizontal: 5 * mm),
                     decoration: pw.BoxDecoration(
@@ -542,11 +562,11 @@ class AgendaBuilder {
                     ),
                     child: pw.Column(children: [
                       pw.Text(job.name, textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(font: f.bold, fontSize: 22, color: s.titleFg)),
+                          style: pw.TextStyle(font: f.display, fontSize: 26, color: s.titleFg)),
                       if (job.phrase.isNotEmpty) ...[
                         pw.SizedBox(height: 1.5 * mm),
                         pw.Text(job.phrase, textAlign: pw.TextAlign.center,
-                            style: pw.TextStyle(font: f.medium, fontSize: 8.5, color: s.titleFg)),
+                            style: pw.TextStyle(font: f.title, fontSize: 10, color: s.titleFg)),
                       ],
                     ]),
                   ),

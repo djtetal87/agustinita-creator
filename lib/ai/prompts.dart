@@ -41,7 +41,7 @@ $_noText
 Portada ilustrada para una agenda personal, formato vertical.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
-COMPOSICIÓN: ${hasCharacter ? 'el personaje protagonista (ver imagen de referencia) centrado en el tercio superior y medio, ' : 'un personaje tierno protagonista en el centro, '}rodeado de adornos del tema; el tercio inferior más despejado y de color suave para colocar un nombre después. Patrón de fondo sutil, colores armoniosos, estilo papelería premium, alta resolución.
+COMPOSICIÓN: ${hasCharacter ? 'el personaje protagonista (ver imagen de referencia) centrado en el tercio superior y medio, ' : 'un personaje tierno protagonista en el centro, '}rodeado de adornos del tema; la franja inferior (20 % de la altura) despejada, lisa y de color suave, sin personaje ni objetos, para colocar un nombre después. Patrón de fondo sutil, colores armoniosos, estilo papelería premium, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
 '''
@@ -60,7 +60,20 @@ $_noText
 Marco decorativo para las páginas interiores de una agenda, formato vertical.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
-COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave y en colores pastel claros, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra), ${hasCharacter ? 'con el personaje de la imagen de referencia asomado pequeño en la esquina inferior derecha' : 'con un personaje tierno pequeño asomado en la esquina inferior derecha'}. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
+COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave y en colores pastel claros, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra), ${hasCharacter ? 'con el personaje de la imagen de referencia asomado en la esquina inferior derecha, PEQUEÑO (no más del 15 % de la altura de la página)' : 'con un personaje tierno PEQUEÑO (no más del 15 % de la altura) asomado en la esquina inferior derecha'}. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío; los adornos no entran al centro. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
+${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
+$_noText
+'''
+        .trim();
+  }
+
+  /// Marco interior a partir de una portada subida por el usuario (Kontext):
+  /// copia estilo, paleta y adornos de esa portada.
+  static String interiorFromCover({required String concept, required String extra}) {
+    return '''
+Usa la imagen adjunta (portada de una agenda) como referencia de estilo, paleta, personaje y adornos, y genera un MARCO para las páginas interiores de esa misma agenda, formato vertical.
+${_concept(concept)}
+COMPOSICIÓN: los mismos adornos y colores de la portada, pero SOLO en los bordes y esquinas (orillas), más suaves y pequeños; si la portada tiene un personaje, asómalo PEQUEÑO (máximo 15 % de la altura) en la esquina inferior derecha. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. Fondo blanco, estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
 '''

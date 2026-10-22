@@ -34,6 +34,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Uint8List? _photo;
   Uint8List? _character;
   Uint8List? _cover;
+  bool _coverUploaded = false; // portada hecha en otra app
   Uint8List? _interior;
   bool _illustratedInterior = true;
   String _interiorExtra = '';
@@ -92,16 +93,32 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
+  Future<void> _uploadCover() async {
+    final b = await pickImage();
+    if (b == null) return;
+    setState(() {
+      _cover = b;
+      _coverUploaded = true;
+    });
+  }
+
   Future<void> _genInterior() async {
     if (!_check()) return;
     setState(() => _busyInterior = true);
     try {
       final extra = [_extra, _interiorExtra].where((e) => e.trim().isNotEmpty).join('. ');
-      final prompt = Prompts.agendaInteriorFrame(
-          style: _style, concept: _concept, extra: extra, hasCharacter: _character != null);
-      final img = _character != null
-          ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
-          : await _ai.textToImage(prompt, width: 992, height: 1536);
+      Uint8List img;
+      if (_coverUploaded && _cover != null) {
+        // interior basado en la portada que subió el usuario
+        img = await _ai.imageToImage(
+            Prompts.interiorFromCover(concept: _concept, extra: extra), _cover!, aspectRatio: '2:3');
+      } else {
+        final prompt = Prompts.agendaInteriorFrame(
+            style: _style, concept: _concept, extra: extra, hasCharacter: _character != null);
+        img = _character != null
+            ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
+            : await _ai.textToImage(prompt, width: 992, height: 1536);
+      }
       setState(() => _interior = img);
     } catch (e) {
       if (mounted) toast(context, e.toString());
@@ -111,10 +128,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
   }
 
   /// Flujo completo: personaje (si hay foto) → portada → marco interior.
+  /// Si el usuario subió su propia portada, no se genera portada.
   Future<void> _generateAll() async {
     if (!_check()) return;
     if (_photo != null && _character == null) await _genCharacter();
-    await _genCover();
+    if (!_coverUploaded) await _genCover();
     if (_illustratedInterior) await _genInterior();
   }
 
@@ -134,12 +152,16 @@ class _AgendaScreenState extends State<AgendaScreen> {
         coverArt: _cover,
         characterArt: _character,
         interiorArt: _illustratedInterior ? _interior : null,
+        coverHasText: _coverUploaded,
         mirrorBack: _mirrorBack,
       );
       final b = AgendaBuilder(job, fonts);
       final slug = _name.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
       final interior = await b.buildInterior();
       final cover = await b.buildCover();
+      // Los PDF ya están listos: el botón vuelve a la normalidad antes de abrir
+      // la hoja de compartir (que puede quedarse abierta un rato).
+      if (mounted) setState(() => _busyExport = false);
       final paths = await exportPdfs({
         'Agenda_${slug}_Interior_DobleCara.pdf': interior,
         'Agenda_${slug}_Portada.pdf': cover,
@@ -187,6 +209,29 @@ class _AgendaScreenState extends State<AgendaScreen> {
             IconButton(onPressed: () => setState(() { _photo = null; _character = null; }), icon: const Icon(Icons.close)),
           ],
         ]),
+        const SectionTitle('Portada hecha en otra app (opcional)'),
+        Row(children: [
+          OutlinedButton.icon(
+            onPressed: _uploadCover,
+            icon: const Icon(Icons.upload_file),
+            label: Text(_coverUploaded ? 'Cambiar portada' : 'Subir portada'),
+          ),
+          const SizedBox(width: 12),
+          if (_coverUploaded) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(_cover!, width: 40, height: 56, fit: BoxFit.cover),
+            ),
+            IconButton(
+              onPressed: () => setState(() { _cover = null; _coverUploaded = false; }),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ]),
+        Text(_coverUploaded
+            ? 'Se usa tal cual (sin escribir el nombre encima) y el marco interior se genera a partir de ella.'
+            : 'Si subes tu portada, la IA no la genera y el interior se basa en tu diseño.',
+            style: Theme.of(context).textTheme.bodySmall),
         const SectionTitle('Páginas'),
         Row(children: [
           const Text('Hojas (2 páginas por hoja)'),
@@ -265,10 +310,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
           height: 240,
         ),
         ArtPreview(
-          label: 'Portada',
+          label: _coverUploaded ? 'Portada (subida)' : 'Portada',
           bytes: _cover,
           busy: _busyCover,
-          onRegenerate: _genCover,
+          onRegenerate: _coverUploaded ? null : _genCover,
           height: 420,
         ),
         if (_illustratedInterior)

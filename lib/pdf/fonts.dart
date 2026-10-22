@@ -7,7 +7,9 @@ class PdfFonts {
   final pw.Font regular;
   final pw.Font medium;
   final pw.Font bold;
-  const PdfFonts(this.regular, this.medium, this.bold);
+  final pw.Font title; // cursiva no tradicional (títulos de página)
+  final pw.Font display; // gruesa redondeada (nombre en portada)
+  const PdfFonts(this.regular, this.medium, this.bold, this.title, this.display);
 
   static PdfFonts? _cache;
 
@@ -16,6 +18,8 @@ class PdfFonts {
     final r = pw.Font.ttf(await rootBundle.load('assets/fonts/Poppins-Regular.ttf'));
     final m = pw.Font.ttf(await rootBundle.load('assets/fonts/Poppins-Medium.ttf'));
     final b = pw.Font.ttf(await rootBundle.load('assets/fonts/Poppins-Bold.ttf'));
-    return _cache = PdfFonts(r, m, b);
+    final t = pw.Font.ttf(await rootBundle.load('assets/fonts/Pacifico-Regular.ttf'));
+    final d = pw.Font.ttf(await rootBundle.load('assets/fonts/LilitaOne-Regular.ttf'));
+    return _cache = PdfFonts(r, m, b, t, d);
   }
 }
