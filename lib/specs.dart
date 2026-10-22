@@ -92,14 +92,69 @@ enum PageKind {
   achievements, // Mis logros (lista numerada)
   creative, // Escritura creativa
   namePage, // Página con el nombre y la frase
+  custom, // Página extra definida por el usuario (título + pauta)
   blank,
 }
+
+/// Pautas disponibles para las páginas extra.
+enum CustomLayout { ruled, handwriting, checklist, grid, dotted, table, box, numbered }
+
+const customLayoutLabels = <CustomLayout, String>{
+  CustomLayout.ruled: 'rayado',
+  CustomLayout.handwriting: 'caligrafía',
+  CustomLayout.checklist: 'checklist',
+  CustomLayout.grid: 'cuadrícula',
+  CustomLayout.dotted: 'punteado',
+  CustomLayout.table: 'tabla',
+  CustomLayout.box: 'recuadro',
+  CustomLayout.numbered: 'lista numerada',
+};
 
 class PageDef {
   final PageKind kind;
   final int? year;
   final int? halfIndex; // 0 = ene-jun, 1 = jul-dic
-  const PageDef(this.kind, {this.year, this.halfIndex});
+  final String? title; // solo custom
+  final CustomLayout? layout; // solo custom
+  const PageDef(this.kind, {this.year, this.halfIndex, this.title, this.layout});
+}
+
+/// Página extra: "Horario de clases: cuadrícula x2"
+class CustomPage {
+  final String title;
+  final CustomLayout layout;
+  final int count;
+  const CustomPage(this.title, this.layout, this.count);
+
+  /// Parsea líneas tipo "Título: pauta xN". Pauta y xN son opcionales.
+  static List<CustomPage> parse(String text) {
+    final out = <CustomPage>[];
+    for (final raw in text.split('\n')) {
+      var line = raw.trim();
+      if (line.isEmpty) continue;
+      var count = 1;
+      final m = RegExp(r'\s*[x×]\s*(\d+)\s*$', caseSensitive: false).firstMatch(line);
+      if (m != null) {
+        count = int.parse(m.group(1)!).clamp(1, 50);
+        line = line.substring(0, m.start).trim();
+      }
+      var title = line;
+      var layout = CustomLayout.ruled;
+      final idx = line.lastIndexOf(':');
+      if (idx > 0) {
+        final key = line.substring(idx + 1).trim().toLowerCase();
+        final found = customLayoutLabels.entries
+            .where((e) => key.startsWith(e.value.substring(0, 4)))
+            .map((e) => e.key);
+        if (found.isNotEmpty) {
+          layout = found.first;
+          title = line.substring(0, idx).trim();
+        }
+      }
+      out.add(CustomPage(title, layout, count));
+    }
+    return out;
+  }
 }
 
 const pageTitles = <PageKind, String>{
@@ -117,6 +172,53 @@ const pageTitles = <PageKind, String>{
   PageKind.namePage: '',
   PageKind.blank: '',
 };
+
+/// Secuencia completa para [sheets] hojas (2 páginas por hoja):
+/// bloque inicial (datos, notas, calendarios) + páginas extra del usuario +
+/// relleno cíclico con el mix de la agenda de Agustina + cierre (nombre).
+List<PageDef> buildAgendaPages({
+  required int sheets,
+  required int firstYear,
+  List<CustomPage> custom = const [],
+}) {
+  final total = sheets * 2;
+  final y = firstYear;
+  final intro = <PageDef>[
+    const PageDef(PageKind.owner),
+    const PageDef(PageKind.notes),
+    PageDef(PageKind.calendar, year: y, halfIndex: 0),
+    PageDef(PageKind.calendar, year: y, halfIndex: 1),
+    PageDef(PageKind.calendar, year: y + 1, halfIndex: 0),
+    PageDef(PageKind.calendar, year: y + 1, halfIndex: 1),
+  ];
+  final extras = <PageDef>[
+    for (final c in custom)
+      for (var i = 0; i < c.count; i++)
+        PageDef(PageKind.custom, title: c.title, layout: c.layout),
+  ];
+  const cycle = [
+    PageKind.handwriting, PageKind.notes, PageKind.drawWrite, PageKind.handwriting,
+    PageKind.therapyTasks, PageKind.homework, PageKind.feelings, PageKind.handwriting,
+    PageKind.savings, PageKind.creative, PageKind.handwriting, PageKind.achievements,
+    PageKind.notes, PageKind.handwriting,
+  ];
+  final outro = <PageDef>[const PageDef(PageKind.namePage), const PageDef(PageKind.creative)];
+
+  final pages = <PageDef>[...intro, ...extras];
+  var i = 0;
+  while (pages.length < total - outro.length) {
+    pages.add(PageDef(cycle[i % cycle.length]));
+    i++;
+  }
+  pages.addAll(outro);
+  while (pages.length > total) {
+    pages.removeAt(pages.length - outro.length - 1);
+  }
+  while (pages.length < total) {
+    pages.add(const PageDef(PageKind.blank));
+  }
+  return pages;
+}
 
 /// Secuencia por defecto (48 páginas), tomada de la agenda de Agustina.
 List<PageDef> defaultAgendaPages(int firstYear) {

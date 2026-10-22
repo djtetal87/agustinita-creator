@@ -27,6 +27,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   String _concept = '';
   String _extra = '';
   int _year = DateTime.now().year;
+  int _sheets = 24;
+  String _customPages = '';
   bool _mirrorBack = false;
 
   Uint8List? _photo;
@@ -128,7 +130,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         name: _name.trim(),
         phrase: _phrase.trim(),
         style: _style,
-        pages: defaultAgendaPages(_year),
+        pages: buildAgendaPages(sheets: _sheets, firstYear: _year, custom: CustomPage.parse(_customPages)),
         coverArt: _cover,
         characterArt: _character,
         interiorArt: _illustratedInterior ? _interior : null,
@@ -156,7 +158,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final formItems = <Widget>[
         Text('Agenda anillada 15 mm', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
-        Text('Interior doble cara (24 hojas, 48 páginas) + portada en hoja aparte. Margen de anillos: 15 mm.',
+        Text('Interior doble cara (2 páginas por cara) + portada en hoja aparte. Margen de anillos: 15 mm.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 16),
         Field('Nombre de la persona', 'Agustina', (v) => _name = v, icon: Icons.person),
@@ -187,6 +189,17 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ]),
         const SectionTitle('Páginas'),
         Row(children: [
+          const Text('Hojas (2 páginas por hoja)'),
+          const SizedBox(width: 12),
+          DropdownButton<int>(
+            value: _sheets,
+            items: [for (final n in [12, 24, 36, 48, 60, 80, 100]) DropdownMenuItem(value: n, child: Text('$n'))],
+            onChanged: (v) => setState(() => _sheets = v ?? _sheets),
+          ),
+          const SizedBox(width: 8),
+          Text('= ${_sheets * 2} páginas', style: Theme.of(context).textTheme.bodySmall),
+        ]),
+        Row(children: [
           const Text('Calendarios desde el año'),
           const SizedBox(width: 12),
           DropdownButton<int>(
@@ -196,6 +209,17 @@ class _AgendaScreenState extends State<AgendaScreen> {
             onChanged: (v) => setState(() => _year = v ?? _year),
           ),
         ]),
+        const SizedBox(height: 8),
+        Field(
+          'Páginas extra (una por línea)',
+          'Horario de clases: cuadrícula\nCumpleaños: lista numerada x2\nMetas del mes: checklist',
+          (v) => _customPages = v,
+          maxLines: 4,
+          icon: Icons.playlist_add,
+        ),
+        Text('Pautas: rayado · caligrafía · checklist · cuadrícula · punteado · tabla · recuadro · lista numerada. "xN" repite la página N veces. Van después de los calendarios.',
+            style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Interior ilustrado'),

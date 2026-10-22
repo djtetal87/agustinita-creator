@@ -362,6 +362,13 @@ class AgendaBuilder {
           pw.Text('Mis ideas y mis acuerdos', style: pw.TextStyle(font: f.regular, fontSize: 6, color: PdfColors.grey600)),
         ]);
         break;
+      case PageKind.custom:
+        body = pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title(def.title ?? ''),
+          pw.SizedBox(height: 3 * mm),
+          _customLayout(def.layout ?? CustomLayout.ruled),
+        ]);
+        break;
       case PageKind.blank:
         body = pw.SizedBox();
         break;
@@ -370,6 +377,81 @@ class AgendaBuilder {
       body,
       _pageNumber(number),
     ]);
+  }
+
+  pw.Widget _customLayout(CustomLayout l) {
+    final availH = AgendaSpec.frameH - AgendaSpec.innerPad * 2 - 18;
+    final availW = AgendaSpec.frameW - AgendaSpec.innerPad * 2;
+    switch (l) {
+      case CustomLayout.ruled:
+        return _ruled(9);
+      case CustomLayout.handwriting:
+        return _handwritingRows(13);
+      case CustomLayout.checklist:
+        return pw.Column(children: [
+          for (var i = 0; i < 12; i++)
+            pw.Container(
+              height: 12 * mm,
+              child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Container(
+                  width: 4 * mm, height: 4 * mm,
+                  margin: pw.EdgeInsets.only(right: 3 * mm, bottom: 0.5 * mm),
+                  decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: s.accent, width: 0.6),
+                      borderRadius: pw.BorderRadius.circular(1 * mm)),
+                ),
+                pw.Expanded(child: _rule()),
+              ]),
+            ),
+        ]);
+      case CustomLayout.grid:
+        final cols = (availW / 5).floor();
+        final rows = (availH / 5).floor();
+        return pw.Table(
+          border: pw.TableBorder.all(color: s.rule, width: 0.25),
+          children: [for (var r = 0; r < rows; r++)
+            pw.TableRow(children: [for (var c = 0; c < cols; c++) pw.SizedBox(height: 5 * mm)])],
+        );
+      case CustomLayout.dotted:
+        final cols = (availW / 5).floor();
+        final rows = (availH / 5).floor();
+        return pw.Column(children: [
+          for (var r = 0; r < rows; r++)
+            pw.Container(
+              height: 5 * mm,
+              child: pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                for (var c = 0; c < cols; c++)
+                  pw.Container(width: 0.8 * mm, height: 0.8 * mm,
+                      decoration: pw.BoxDecoration(color: s.rule, shape: pw.BoxShape.circle)),
+              ]),
+            ),
+        ]);
+      case CustomLayout.table:
+        return pw.Table(
+          border: pw.TableBorder.all(color: s.frame, width: 0.5),
+          children: [
+            pw.TableRow(
+              decoration: pw.BoxDecoration(color: s.titleBg),
+              children: [for (var c = 0; c < 3; c++) pw.SizedBox(height: 7 * mm)],
+            ),
+            for (var i = 0; i < 16; i++)
+              pw.TableRow(children: [for (var c = 0; c < 3; c++) pw.SizedBox(height: 9 * mm)]),
+          ],
+        );
+      case CustomLayout.box:
+        return pw.Column(children: [_box(80), pw.SizedBox(height: 3 * mm), _ruled(9, count: 7)]);
+      case CustomLayout.numbered:
+        return pw.Column(children: [
+          for (var i = 1; i <= 12; i++)
+            pw.Container(
+              height: 12.5 * mm,
+              child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Container(width: 6 * mm, child: pw.Text('$i.', style: pw.TextStyle(font: f.bold, fontSize: 7, color: s.accent))),
+                pw.Expanded(child: _rule()),
+              ]),
+            ),
+        ]);
+    }
   }
 
   // ---------- Calendario: 6 meses por página ----------
