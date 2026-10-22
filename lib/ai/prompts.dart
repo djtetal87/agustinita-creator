@@ -60,7 +60,7 @@ $_noText
 Marco decorativo para las páginas interiores de una agenda, formato vertical.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
-COMPOSICIÓN: decoración SOLO en los bordes y esquinas, suave y en colores pastel claros (flores pequeñas, estrellas, cintas, puntos), ${hasCharacter ? 'con el personaje de la imagen de referencia asomado pequeño en la esquina inferior derecha' : 'con un personaje tierno pequeño asomado en la esquina inferior derecha'}. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
+COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave y en colores pastel claros, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra), ${hasCharacter ? 'con el personaje de la imagen de referencia asomado pequeño en la esquina inferior derecha' : 'con un personaje tierno pequeño asomado en la esquina inferior derecha'}. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
 '''

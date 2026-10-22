@@ -35,7 +35,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Uint8List? _character;
   Uint8List? _cover;
   Uint8List? _interior;
-  bool _illustratedInterior = false;
+  bool _illustratedInterior = true;
   String _interiorExtra = '';
   bool _busyCharacter = false;
   bool _busyCover = false;
