@@ -32,8 +32,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Uint8List? _photo;
   Uint8List? _character;
   Uint8List? _cover;
+  Uint8List? _interior;
+  bool _illustratedInterior = false;
+  String _interiorExtra = '';
   bool _busyCharacter = false;
   bool _busyCover = false;
+  bool _busyInterior = false;
   bool _busyExport = false;
 
   FalService get _ai => FalService(apiKey: widget.settings.falKey, textModel: widget.settings.falModel);
@@ -86,11 +90,30 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  /// Flujo completo: personaje (si hay foto) → portada.
+  Future<void> _genInterior() async {
+    if (!_check()) return;
+    setState(() => _busyInterior = true);
+    try {
+      final extra = [_extra, _interiorExtra].where((e) => e.trim().isNotEmpty).join('. ');
+      final prompt = Prompts.agendaInteriorFrame(
+          style: _style, concept: _concept, extra: extra, hasCharacter: _character != null);
+      final img = _character != null
+          ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
+          : await _ai.textToImage(prompt, width: 992, height: 1536);
+      setState(() => _interior = img);
+    } catch (e) {
+      if (mounted) toast(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _busyInterior = false);
+    }
+  }
+
+  /// Flujo completo: personaje (si hay foto) → portada → marco interior.
   Future<void> _generateAll() async {
     if (!_check()) return;
     if (_photo != null && _character == null) await _genCharacter();
     await _genCover();
+    if (_illustratedInterior) await _genInterior();
   }
 
   Future<void> _export() async {
@@ -108,6 +131,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         pages: defaultAgendaPages(_year),
         coverArt: _cover,
         characterArt: _character,
+        interiorArt: _illustratedInterior ? _interior : null,
         mirrorBack: _mirrorBack,
       );
       final b = AgendaBuilder(job, fonts);
@@ -174,6 +198,16 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ]),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
+          title: const Text('Interior ilustrado'),
+          subtitle: const Text('Un marco decorado (suave, bordes) en todas las páginas, a juego con la portada. +1 imagen.'),
+          value: _illustratedInterior,
+          onChanged: (v) => setState(() => _illustratedInterior = v),
+        ),
+        if (_illustratedInterior)
+          Field('Indicaciones para el interior (opcional)', 'solo flores, sin personaje · más suave que la portada',
+              (v) => _interiorExtra = v, maxLines: 2),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
           title: const Text('Margen de anillos a la derecha en el reverso'),
           subtitle: const Text('Déjalo apagado para imprimir igual que la agenda de Agustina (margen a la izquierda en ambas caras).'),
           value: _mirrorBack,
@@ -181,7 +215,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: (_busyCover || _busyCharacter) ? null : _generateAll,
+          onPressed: (_busyCover || _busyCharacter || _busyInterior) ? null : _generateAll,
           icon: const Icon(Icons.auto_awesome),
           label: const Text('Generar arte con IA'),
         ),
@@ -213,6 +247,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
           onRegenerate: _genCover,
           height: 420,
         ),
+        if (_illustratedInterior)
+          ArtPreview(
+            label: 'Marco interior',
+            bytes: _interior,
+            busy: _busyInterior,
+            onRegenerate: _genInterior,
+            height: 420,
+          ),
     ];
 
     if (!wide) {

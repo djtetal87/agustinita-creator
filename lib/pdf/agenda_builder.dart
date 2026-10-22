@@ -15,6 +15,7 @@ class AgendaJob {
   final List<PageDef> pages;
   final Uint8List? coverArt; // ilustración generada (portada)
   final Uint8List? characterArt; // personaje (foto → personaje) para la página del nombre
+  final Uint8List? interiorArt; // marco ilustrado para todas las páginas interiores
   final bool mirrorBack; // margen de anillos a la derecha en el reverso
 
   const AgendaJob({
@@ -24,6 +25,7 @@ class AgendaJob {
     required this.pages,
     this.coverArt,
     this.characterArt,
+    this.interiorArt,
     this.mirrorBack = false,
   });
 }
@@ -34,6 +36,8 @@ class AgendaBuilder {
   AgendaBuilder(this.job, this.f);
 
   StyleSpec get s => job.style;
+  late final pw.MemoryImage? _interior =
+      job.interiorArt == null ? null : pw.MemoryImage(job.interiorArt!);
 
   // ---------- Interior: hojas carta horizontales, 2 páginas por cara ----------
 
@@ -112,10 +116,19 @@ class AgendaBuilder {
                 border: pw.Border.all(color: s.frame, width: 0.8),
                 borderRadius: pw.BorderRadius.circular(AgendaSpec.frameRadius * mm),
               ),
-              child: pw.Padding(
-                padding: pw.EdgeInsets.all(AgendaSpec.innerPad * mm),
-                child: _pageBody(def, number),
-              ),
+              child: pw.Stack(fit: pw.StackFit.expand, children: [
+                if (_interior != null)
+                  pw.ClipRRect(
+                    horizontalRadius: AgendaSpec.frameRadius * mm,
+                    verticalRadius: AgendaSpec.frameRadius * mm,
+                    child: pw.Image(_interior!, fit: pw.BoxFit.cover),
+                  ),
+                pw.Padding(
+                  // con marco ilustrado el contenido se aleja un poco más del borde
+                  padding: pw.EdgeInsets.all((_interior == null ? AgendaSpec.innerPad : AgendaSpec.innerPad + 6) * mm),
+                  child: _pageBody(def, number),
+                ),
+              ]),
             ),
           ),
       ]),

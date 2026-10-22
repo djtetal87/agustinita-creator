@@ -48,6 +48,25 @@ $_noText
         .trim();
   }
 
+  /// Marco para las páginas interiores de la agenda: decoración suave en los
+  /// bordes y centro blanco para que las pautas y la escritura se lean bien.
+  static String agendaInteriorFrame({
+    required StyleSpec style,
+    required String concept,
+    required String extra,
+    required bool hasCharacter,
+  }) {
+    return '''
+Marco decorativo para las páginas interiores de una agenda, formato vertical.
+ESTÉTICA: ${style.aiPrompt}.
+${_concept(concept)}
+COMPOSICIÓN: decoración SOLO en los bordes y esquinas, suave y en colores pastel claros (flores pequeñas, estrellas, cintas, puntos), ${hasCharacter ? 'con el personaje de la imagen de referencia asomado pequeño en la esquina inferior derecha' : 'con un personaje tierno pequeño asomado en la esquina inferior derecha'}. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
+${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
+$_noText
+'''
+        .trim();
+  }
+
   /// Foto → personaje (Kontext). Mantiene rasgos reconocibles.
   static String photoToCharacter({
     required StyleSpec style,
