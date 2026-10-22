@@ -3,16 +3,22 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../planner/holidays_cl.dart';
+import '../planner/sections.dart';
 import '../specs.dart';
 import '../theme_spec.dart';
 import 'fonts.dart';
+
+part 'planner_pages.dart';
 
 /// Datos que vienen del formulario de Agenda.
 class AgendaJob {
   final String name;
   final String phrase;
   final StyleSpec style;
-  final List<PageDef> pages;
+  final List<PageDef> pages; // agenda infantil clásica (si plannerPages == null)
+  final List<PlannerPage>? plannerPages; // planner por secciones
+  final Uint8List? separatorArt; // arte de los separadores de mes (página completa)
   final Uint8List? coverArt; // ilustración generada (portada)
   final Uint8List? characterArt; // personaje (foto → personaje) para la página del nombre
   final Uint8List? interiorArt; // marco ilustrado para todas las páginas interiores
@@ -24,7 +30,9 @@ class AgendaJob {
     required this.name,
     required this.phrase,
     required this.style,
-    required this.pages,
+    this.pages = const [],
+    this.plannerPages,
+    this.separatorArt,
     this.coverArt,
     this.characterArt,
     this.interiorArt,
@@ -43,33 +51,52 @@ class AgendaBuilder {
   AgendaSpec get sp => job.spec;
   late final pw.MemoryImage? _interior =
       job.interiorArt == null ? null : pw.MemoryImage(job.interiorArt!);
+  late final pw.MemoryImage? _separator = job.separatorArt != null
+      ? pw.MemoryImage(job.separatorArt!)
+      : job.coverArt != null
+          ? pw.MemoryImage(job.coverArt!)
+          : null;
 
   // ---------- Interior: hojas carta horizontales, 2 páginas por cara ----------
 
+  /// Una página lista para colocar en media hoja.
+  pw.Widget _pageWidget(int i, int number, bool ringLeft) {
+    final pp = job.plannerPages;
+    if (pp != null) {
+      if (i >= pp.length) return _half(null, number, ringLeft);
+      final p = pp[i];
+      final art = sectionDef(p.kind).artOnly;
+      return _half(_bodyWithNumber(plannerBody(p), number), number, ringLeft, artPage: art);
+    }
+    if (i >= job.pages.length) return _half(null, number, ringLeft);
+    final def = job.pages[i];
+    if (def.kind == PageKind.blank) return _half(null, number, ringLeft);
+    return _half(_pageBody(def, number), number, ringLeft, artPage: def.kind == PageKind.namePage);
+  }
+
+  int get _pageCount => job.plannerPages?.length ?? job.pages.length;
+
   Future<Uint8List> buildInterior() async {
     final doc = pw.Document(title: 'Agenda ${job.name} — interior');
-    final pages = List<PageDef>.from(job.pages);
-    while (pages.length % 4 != 0) {
-      pages.add(const PageDef(PageKind.blank));
+    var n = _pageCount;
+    while (n % 4 != 0) {
+      n++;
     }
-    for (var i = 0; i < pages.length; i += 4) {
-      // cara frontal
-      doc.addPage(_sheet(pages[i], pages[i + 1], i + 1, i + 2, ringLeft: true));
-      // reverso
-      doc.addPage(_sheet(pages[i + 2], pages[i + 3], i + 3, i + 4,
-          ringLeft: !job.mirrorBack));
+    for (var i = 0; i < n; i += 4) {
+      doc.addPage(_sheet(i, i + 1, ringLeft: true)); // cara frontal
+      doc.addPage(_sheet(i + 2, i + 3, ringLeft: !job.mirrorBack)); // reverso
     }
     return doc.save();
   }
 
-  pw.Page _sheet(PageDef a, PageDef b, int na, int nb, {required bool ringLeft}) {
+  pw.Page _sheet(int ia, int ib, {required bool ringLeft}) {
     return pw.Page(
       pageFormat: PdfPageFormat(sp.sheetW * mm, sp.sheetH * mm),
       margin: pw.EdgeInsets.zero,
       build: (ctx) => pw.Stack(children: [
-        pw.Positioned(left: 0, top: 0, child: _half(a, na, ringLeft)),
+        pw.Positioned(left: 0, top: 0, child: _pageWidget(ia, ia + 1, ringLeft)),
         pw.Positioned(
-            left: sp.halfW * mm, top: 0, child: _half(b, nb, ringLeft)),
+            left: sp.halfW * mm, top: 0, child: _pageWidget(ib, ib + 1, ringLeft)),
         // marca de corte central
         pw.Positioned(
           left: sp.halfW * mm - 0.15,
@@ -85,12 +112,15 @@ class AgendaBuilder {
     );
   }
 
-  /// Una página de 139.7 × 215.9 mm con su margen para los anillos.
-  pw.Widget _half(PageDef def, int number, bool ringLeft) {
+  /// Media hoja: una página con su margen para los anillos.
+  /// [body] null = página en blanco. [artPage] = fondo de arte completo
+  /// (separadores, página del nombre) en vez del marco interior.
+  pw.Widget _half(pw.Widget? body, int number, bool ringLeft, {bool artPage = false}) {
     final frameLeft = ringLeft
         ? AgendaSpec.ringMargin
         : sp.halfW - AgendaSpec.ringMargin - sp.frameW;
-    final isBlank = def.kind == PageKind.blank;
+    final isBlank = body == null;
+    final bg = artPage ? _separator : _interior;
     return pw.SizedBox(
       width: sp.halfW * mm,
       height: sp.sheetH * mm,
@@ -122,19 +152,19 @@ class AgendaBuilder {
                 borderRadius: pw.BorderRadius.circular(AgendaSpec.frameRadius * mm),
               ),
               child: pw.Stack(fit: pw.StackFit.expand, children: [
-                if (_interior != null)
+                if (bg != null)
                   pw.ClipRRect(
                     horizontalRadius: AgendaSpec.frameRadius * mm,
                     verticalRadius: AgendaSpec.frameRadius * mm,
-                    child: pw.Image(_interior!, fit: pw.BoxFit.cover),
+                    child: pw.Image(bg, fit: pw.BoxFit.cover),
                   ),
                 pw.Padding(
                   // con marco ilustrado el contenido se aleja del borde y deja
                   // libre la franja inferior donde asoma el personaje
-                  padding: _interior == null
+                  padding: artPage || bg == null
                       ? pw.EdgeInsets.all(AgendaSpec.innerPad * mm)
                       : pw.EdgeInsets.fromLTRB(13 * mm, 11 * mm, 13 * mm, 24 * mm),
-                  child: _pageBody(def, number),
+                  child: body!,
                 ),
               ]),
             ),
@@ -238,7 +268,10 @@ class AgendaBuilder {
         ),
       );
 
-  pw.Widget _pageBody(PageDef def, int number) {
+  pw.Widget _bodyWithNumber(pw.Widget body, int number) =>
+      pw.Stack(fit: pw.StackFit.expand, children: [body, _pageNumber(number)]);
+
+  pw.Widget _pageBody(PageDef def, int number, {bool bare = false}) {
     pw.Widget body;
     switch (def.kind) {
       case PageKind.owner:
@@ -367,21 +400,30 @@ class AgendaBuilder {
         ]);
         break;
       case PageKind.namePage:
-        body = pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
-          if (job.characterArt != null)
-            pw.Container(
-              height: 70 * mm,
-              child: pw.Image(pw.MemoryImage(job.characterArt!), fit: pw.BoxFit.contain),
+        body = pw.Column(mainAxisAlignment: pw.MainAxisAlignment.end, children: [
+          if (job.characterArt != null && _separator == null)
+            pw.Expanded(
+              child: pw.Center(child: pw.Container(
+                height: 70 * mm,
+                child: pw.Image(pw.MemoryImage(job.characterArt!), fit: pw.BoxFit.contain),
+              )),
             ),
-          pw.SizedBox(height: 6 * mm),
-          if (job.name.isNotEmpty)
-            pw.Text(job.name, style: pw.TextStyle(font: f.display, fontSize: 20, color: s.titleFg)),
-          pw.SizedBox(height: 2 * mm),
-          if (job.phrase.isNotEmpty)
-            pw.Text(job.phrase, textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: f.medium, fontSize: 7.5, color: s.titleFg)),
-          pw.SizedBox(height: 6 * mm),
-          pw.Text('Mis ideas y mis acuerdos', style: pw.TextStyle(font: f.regular, fontSize: 6, color: PdfColors.grey600)),
+          pw.Container(
+            padding: pw.EdgeInsets.symmetric(vertical: 4 * mm, horizontal: 6 * mm),
+            decoration: pw.BoxDecoration(color: PdfColor(1, 1, 1, 0.85), borderRadius: pw.BorderRadius.circular(5 * mm)),
+            child: pw.Column(children: [
+              if (job.name.isNotEmpty)
+                pw.Text(job.name, style: pw.TextStyle(font: f.display, fontSize: 20, color: s.titleFg)),
+              if (job.phrase.isNotEmpty) ...[
+                pw.SizedBox(height: 2 * mm),
+                pw.Text(job.phrase, textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(font: f.medium, fontSize: 7.5, color: s.titleFg)),
+              ],
+              pw.SizedBox(height: 3 * mm),
+              pw.Text('Agustinita Papelería', style: pw.TextStyle(font: f.regular, fontSize: 5.5, color: PdfColors.grey600)),
+            ]),
+          ),
+          pw.SizedBox(height: 8 * mm),
         ]);
         break;
       case PageKind.custom:
@@ -395,11 +437,9 @@ class AgendaBuilder {
         body = pw.SizedBox();
         break;
     }
+    if (bare) return body;
     // fit expand: la Column con Expanded necesita altura acotada
-    return pw.Stack(fit: pw.StackFit.expand, children: [
-      body,
-      _pageNumber(number),
-    ]);
+    return _bodyWithNumber(body, number);
   }
 
   pw.Widget _customLayout(CustomLayout l) {

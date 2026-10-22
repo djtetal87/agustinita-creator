@@ -8,6 +8,8 @@ import '../app_settings.dart';
 import '../export.dart';
 import '../pdf/agenda_builder.dart';
 import '../pdf/fonts.dart';
+import '../planner/sections.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../specs.dart';
 import '../theme_spec.dart';
 import 'widgets.dart';
@@ -37,8 +39,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
   String _styleId = 'kawaii';
   String _sizeId = 'a5';
   bool _nameOnCover = true; // escribir nombre y frase sobre la portada
-  int _year = DateTime.now().year;
-  int _sheets = 24;
+  int _year = DateTime.now().year + 1;
+  int _startMonth = 1;
+  int _monthsCount = 12;
+  String _templateId = 'psicologa';
+  late List<SectionChoice> _sections = plannerTemplates.first.build();
+  Uint8List? _separator;
+  bool _busySeparator = false;
   bool _mirrorBack = false;
 
   Uint8List? _photo;
@@ -137,13 +144,54 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
-  /// Flujo completo: personaje (si hay foto) → portada → marco interior.
+  bool get _hasDividers => _sections.any((c) => c.enabled && c.kind == SectionKind.monthDivider);
+
+  Future<void> _genSeparator() async {
+    if (!_check()) return;
+    setState(() => _busySeparator = true);
+    try {
+      final ref = (_coverUploaded || _styleId == 'referencia') ? _cover : _character;
+      final prompt = Prompts.monthDivider(style: _style, concept: _concept, extra: _extra, fromCover: ref != null);
+      final spec = AgendaSpec.byId(_sizeId);
+      final img = ref != null
+          ? await _ai.imageToImage(prompt, ref, aspectRatio: '2:3')
+          : await _ai.textToImage(prompt, width: spec.aiWidth, height: spec.aiHeight);
+      setState(() => _separator = img);
+    } catch (e) {
+      if (mounted) toast(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _busySeparator = false);
+    }
+  }
+
+  /// Flujo completo: personaje (si hay foto) → portada → marco interior → separadores.
   /// Si el usuario subió su propia portada, no se genera portada.
   Future<void> _generateAll() async {
     if (!_check()) return;
     if (_photo != null && _character == null) await _genCharacter();
     if (!_coverUploaded) await _genCover();
     if (_illustratedInterior) await _genInterior();
+    if (_hasDividers) await _genSeparator();
+  }
+
+  List<PlannerPage> _plannerPages() => buildPlannerPages(
+        choices: _sections,
+        year: _year,
+        monthsFrom: _startMonth,
+        monthsCount: _monthsCount,
+        custom: CustomPage.parse(_customPages),
+      );
+
+  void _applyTemplate(String id) {
+    setState(() {
+      _templateId = id;
+      _sections = plannerTemplates.firstWhere((t) => t.id == id).build();
+    });
+  }
+
+  Future<void> _copyQuestionnaire() async {
+    await Clipboard.setData(ClipboardData(text: questionnaire()));
+    if (mounted) toast(context, 'Cuestionario copiado. Pégalo en WhatsApp.');
   }
 
   Future<void> _export() async {
@@ -154,7 +202,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
         name: _name.trim(),
         phrase: _phrase.trim(),
         style: _style,
-        pages: buildAgendaPages(sheets: _sheets, firstYear: _year, custom: CustomPage.parse(_customPages)),
+        plannerPages: _plannerPages(),
+        separatorArt: _separator,
         coverArt: _cover,
         characterArt: _character,
         interiorArt: _illustratedInterior ? _interior : null,
@@ -182,11 +231,38 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
+  Widget _sectionRow(SectionChoice c) {
+    final d = sectionDef(c.kind);
+    final unit = d.placement == Placement.perMonth ? '/mes' : d.placement == Placement.perWeek ? '/sem' : '';
+    final fixedDaily = c.kind == SectionKind.daily;
+    return Row(children: [
+      Checkbox(value: c.enabled, onChanged: (v) => setState(() => c.enabled = v ?? false)),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(d.label, style: TextStyle(color: c.enabled ? null : Colors.grey)),
+        Text(d.hint, style: Theme.of(context).textTheme.bodySmall),
+      ])),
+      if (!fixedDaily) ...[
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          onPressed: c.enabled && c.pages > 1 ? () => setState(() => c.pages--) : null,
+          icon: const Icon(Icons.remove_circle_outline, size: 18),
+        ),
+        Text('${c.pages}$unit', style: Theme.of(context).textTheme.labelLarge),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          onPressed: c.enabled && c.pages < 40 ? () => setState(() => c.pages++) : null,
+          icon: const Icon(Icons.add_circle_outline, size: 18),
+        ),
+      ] else
+        Text('7/sem', style: Theme.of(context).textTheme.labelLarge),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.of(context).size.width > 900;
     final formItems = <Widget>[
-        Text('Agenda anillada 15 mm', style: Theme.of(context).textTheme.headlineSmall),
+        Text('Agenda / planner anillado', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
         Text('Interior doble cara (2 páginas por hoja) + portada en hoja aparte. Margen de anillos: 15 mm. A5 por defecto.',
             style: Theme.of(context).textTheme.bodySmall),
@@ -257,38 +333,67 @@ class _AgendaScreenState extends State<AgendaScreen> {
           value: _nameOnCover,
           onChanged: (v) => setState(() => _nameOnCover = v),
         ),
-        const SectionTitle('Páginas'),
+        const SectionTitle('Secciones de la agenda'),
+        DropdownButtonFormField<String>(
+          value: _templateId,
+          decoration: const InputDecoration(labelText: 'Plantilla', border: OutlineInputBorder(), isDense: true),
+          items: [for (final t in plannerTemplates) DropdownMenuItem(value: t.id, child: Text(t.label))],
+          onChanged: (v) { if (v != null) _applyTemplate(v); },
+        ),
+        const SizedBox(height: 8),
         Row(children: [
-          const Text('Hojas (2 páginas por hoja)'),
-          const SizedBox(width: 12),
-          DropdownButton<int>(
-            value: _sheets,
-            items: [for (final n in [12, 24, 36, 48, 60, 80, 100]) DropdownMenuItem(value: n, child: Text('$n'))],
-            onChanged: (v) => setState(() => _sheets = v ?? _sheets),
-          ),
+          const Text('Año'),
           const SizedBox(width: 8),
-          Text('= ${_sheets * 2} páginas', style: Theme.of(context).textTheme.bodySmall),
-        ]),
-        Row(children: [
-          const Text('Calendarios desde el año'),
-          const SizedBox(width: 12),
           DropdownButton<int>(
             value: _year,
             items: [for (var y = DateTime.now().year - 1; y <= DateTime.now().year + 3; y++)
               DropdownMenuItem(value: y, child: Text('$y'))],
             onChanged: (v) => setState(() => _year = v ?? _year),
           ),
+          const SizedBox(width: 16),
+          const Text('Desde'),
+          const SizedBox(width: 8),
+          DropdownButton<int>(
+            value: _startMonth,
+            items: [for (var m = 1; m <= 12; m++)
+              DropdownMenuItem(value: m, child: Text(const ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m - 1]))],
+            onChanged: (v) => setState(() => _startMonth = v ?? _startMonth),
+          ),
+          const SizedBox(width: 16),
+          DropdownButton<int>(
+            value: _monthsCount,
+            items: [for (final n in [6, 12, 18]) DropdownMenuItem(value: n, child: Text('$n meses'))],
+            onChanged: (v) => setState(() => _monthsCount = v ?? _monthsCount),
+          ),
         ]),
+        const SizedBox(height: 4),
+        Text('Marca las secciones y cuántas páginas de cada una (por mes o por semana cuando corresponde).',
+            style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 4),
+        for (final c in _sections) _sectionRow(c),
+        const SizedBox(height: 6),
+        Builder(builder: (ctx) {
+          final n = _plannerPages().length;
+          final sheets = (n / 2).ceil();
+          return Text('Total: $n páginas = $sheets hojas (${AgendaSpec.byId(_sizeId).id == 'a5' ? 'A4' : 'carta'} doble cara)',
+              style: Theme.of(context).textTheme.titleSmall);
+        }),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _copyQuestionnaire,
+          icon: const Icon(Icons.content_copy),
+          label: const Text('Copiar cuestionario para la clienta'),
+        ),
         const SizedBox(height: 8),
         Field(
           'Páginas extra (una por línea)',
-          'Horario de clases: cuadrícula\nCumpleaños: lista numerada x2\nMetas del mes: checklist',
+          'Horario de clases: cuadrícula\nLista de cursos: lista numerada x2',
           (_) {},
-          maxLines: 4,
+          maxLines: 3,
           icon: Icons.playlist_add,
           controller: _customPagesC,
         ),
-        Text('Pautas: rayado · caligrafía · checklist · cuadrícula · punteado · tabla · recuadro · lista numerada. "xN" repite la página N veces. Van después de los calendarios.',
+        Text('Pautas: rayado · caligrafía · checklist · cuadrícula · punteado · tabla · recuadro · lista numerada. "xN" repite la página N veces. Van antes de la página del nombre.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         SwitchListTile(
@@ -310,7 +415,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: (_busyCover || _busyCharacter || _busyInterior) ? null : _generateAll,
+          onPressed: (_busyCover || _busyCharacter || _busyInterior || _busySeparator) ? null : _generateAll,
           icon: const Icon(Icons.auto_awesome),
           label: const Text('Generar arte con IA'),
         ),
@@ -348,6 +453,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
             bytes: _interior,
             busy: _busyInterior,
             onRegenerate: _genInterior,
+            height: 420,
+          ),
+        if (_hasDividers)
+          ArtPreview(
+            label: 'Separadores de mes',
+            bytes: _separator,
+            busy: _busySeparator,
+            onRegenerate: _genSeparator,
             height: 420,
           ),
     ];

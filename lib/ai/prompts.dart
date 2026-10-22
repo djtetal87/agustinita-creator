@@ -67,6 +67,25 @@ $_noText
         .trim();
   }
 
+  /// Separadores de mes: arte de página completa (como un post-it sin pauta),
+  /// personaje grande, franja inferior despejada para el nombre del mes.
+  static String monthDivider({
+    required StyleSpec style,
+    required String concept,
+    required String extra,
+    required bool fromCover,
+  }) {
+    return '''
+${fromCover ? 'Usa la imagen adjunta como referencia de estilo, paleta, personaje y adornos, y genera una' : 'Genera una'} ilustración de página completa para los SEPARADORES de mes de una agenda, formato vertical.
+${fromCover ? '' : 'ESTÉTICA: ${style.aiPrompt}.'}
+${_concept(concept)}
+COMPOSICIÓN: ${fromCover ? 'el mismo personaje de la referencia' : 'un personaje tierno protagonista'} grande en el centro, rodeado de adornos del tema; fondo con patrón suave; la franja inferior (25 % de la altura) lisa y de color suave, sin personaje ni objetos, para escribir el nombre del mes después. Estilo papelería, alta resolución.
+${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
+$_noText
+'''
+        .trim();
+  }
+
   /// Marco interior a partir de una portada subida por el usuario (Kontext):
   /// copia estilo, paleta y adornos de esa portada.
   static String interiorFromCover({required String concept, required String extra}) {
