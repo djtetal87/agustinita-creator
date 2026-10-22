@@ -9,6 +9,7 @@ import '../export.dart';
 import '../pdf/agenda_builder.dart';
 import '../pdf/fonts.dart';
 import '../planner/sections.dart';
+import 'package:printing/printing.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../specs.dart';
 import '../theme_spec.dart';
@@ -46,6 +47,15 @@ class _AgendaScreenState extends State<AgendaScreen> {
   late List<SectionChoice> _sections = plannerTemplates.first.build();
   Uint8List? _separator;
   bool _busySeparator = false;
+  String _sepMode = 'uno'; // uno · propias · estacion · mes
+  final Map<int, Uint8List> _sepByMonth = {};
+  int _sepProgress = 0;
+  // personaje sobre las páginas
+  bool _ovEnabled = true;
+  String _ovCorner = 'br';
+  double _ovSize = 0.18;
+  double _ovOpacity = 0.30;
+  bool _busyPreview = false;
   bool _mirrorBack = false;
 
   Uint8List? _photo;
@@ -164,6 +174,113 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
   }
 
+  Future<Uint8List> _genOneSeparator(String hint) async {
+    final ref = (_coverUploaded || _styleId == 'referencia') ? _cover : _character;
+    final prompt = Prompts.monthDivider(style: _style, concept: _concept, extra: _extra, fromCover: ref != null, seasonHint: hint);
+    final spec = AgendaSpec.byId(_sizeId);
+    return ref != null
+        ? await _ai.imageToImage(prompt, ref, aspectRatio: '2:3')
+        : await _ai.textToImage(prompt, width: spec.aiWidth, height: spec.aiHeight);
+  }
+
+  /// 4 por estación o 12 por mes.
+  Future<void> _genSeparatorsMulti() async {
+    if (!_check()) return;
+    setState(() { _busySeparator = true; _sepProgress = 0; });
+    try {
+      if (_sepMode == 'estacion') {
+        const seasonOfMonth = [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0]; // ene..dic
+        final imgs = <int, Uint8List>{};
+        for (var sIdx = 0; sIdx < 4; sIdx++) {
+          imgs[sIdx] = await _genOneSeparator(Prompts.seasonHints[sIdx]);
+          setState(() => _sepProgress = sIdx + 1);
+        }
+        for (var m = 1; m <= 12; m++) {
+          _sepByMonth[m] = imgs[seasonOfMonth[m - 1]]!;
+        }
+      } else {
+        for (var m = 1; m <= 12; m++) {
+          _sepByMonth[m] = await _genOneSeparator(Prompts.monthHints[m - 1]);
+          setState(() => _sepProgress = m);
+        }
+      }
+      setState(() => _separator = _sepByMonth[1]);
+    } catch (e) {
+      if (mounted) toast(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _busySeparator = false);
+    }
+  }
+
+  Future<void> _pickSeparator(int month) async {
+    final b = await pickImage();
+    if (b != null) setState(() => _sepByMonth[month] = b);
+  }
+
+  Future<void> _preview() async {
+    setState(() => _busyPreview = true);
+    try {
+      final job = _job(await PdfFonts.load());
+      final b = AgendaBuilder(job, await PdfFonts.load());
+      final pdf = await b.buildInterior();
+      final total = ((job.plannerPages?.length ?? 0) / 2).ceil();
+      final want = <int>{0, 1, 2, 3, total ~/ 2, (total ~/ 2) + 1, total - 2, total - 1}
+          .where((i) => i >= 0 && i < total).toList()..sort();
+      final imgs = <Uint8List>[];
+      await for (final page in Printing.raster(pdf, pages: want, dpi: 60)) {
+        imgs.add(await page.toPng());
+      }
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('Vista previa (${imgs.length} hojas de $total)', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 360,
+                child: ListView(scrollDirection: Axis.horizontal, children: [
+                  for (var i = 0; i < imgs.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Column(children: [
+                        Expanded(child: InteractiveViewer(child: Image.memory(imgs[i]))),
+                        Text('Hoja ${want[i] + 1}', style: Theme.of(context).textTheme.bodySmall),
+                      ]),
+                    ),
+                ]),
+              ),
+              const SizedBox(height: 8),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cerrar')),
+            ]),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) toast(context, 'Vista previa: $e');
+    } finally {
+      if (mounted) setState(() => _busyPreview = false);
+    }
+  }
+
+  AgendaJob _job(PdfFonts fonts) => AgendaJob(
+        name: _name.trim(),
+        phrase: _phrase.trim(),
+        style: _style,
+        plannerPages: _plannerPages(),
+        separatorArt: _separator,
+        separatorArts: _sepMode == 'uno' ? const {} : Map.of(_sepByMonth),
+        coverArt: _cover,
+        characterArt: _character,
+        interiorArt: _illustratedInterior ? _interior : null,
+        coverHasText: !_nameOnCover,
+        mirrorBack: _mirrorBack,
+        spec: AgendaSpec.byId(_sizeId),
+        overlay: CharacterOverlay(enabled: _ovEnabled, corner: _ovCorner, sizePct: _ovSize, opacity: _ovOpacity),
+      );
+
   /// Flujo completo: personaje (si hay foto) → portada → marco interior → separadores.
   /// Si el usuario subió su propia portada, no se genera portada.
   Future<void> _generateAll() async {
@@ -171,7 +288,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (_photo != null && _character == null) await _genCharacter();
     if (!_coverUploaded) await _genCover();
     if (_illustratedInterior) await _genInterior();
-    if (_hasDividers) await _genSeparator();
+    if (_hasDividers) {
+      if (_sepMode == 'estacion' || _sepMode == 'mes') {
+        await _genSeparatorsMulti();
+      } else if (_separator == null) {
+        await _genSeparator();
+      }
+    }
   }
 
   List<PlannerPage> _plannerPages() => buildPlannerPages(
@@ -198,19 +321,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     setState(() => _busyExport = true);
     try {
       final fonts = await PdfFonts.load();
-      final job = AgendaJob(
-        name: _name.trim(),
-        phrase: _phrase.trim(),
-        style: _style,
-        plannerPages: _plannerPages(),
-        separatorArt: _separator,
-        coverArt: _cover,
-        characterArt: _character,
-        interiorArt: _illustratedInterior ? _interior : null,
-        coverHasText: !_nameOnCover,
-        mirrorBack: _mirrorBack,
-        spec: AgendaSpec.byId(_sizeId),
-      );
+      final job = _job(fonts);
       final b = AgendaBuilder(job, fonts);
       var slug = _name.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
       if (slug.isEmpty) slug = 'sin_nombre';
@@ -406,6 +517,94 @@ class _AgendaScreenState extends State<AgendaScreen> {
         if (_illustratedInterior)
           Field('Indicaciones para el interior (opcional)', 'solo flores, sin personaje · más suave que la portada',
               (_) {}, maxLines: 2, controller: _interiorExtraC),
+        const SectionTitle('Personaje en las páginas con pauta'),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Poner el personaje semitransparente'),
+          subtitle: const Text('Va debajo de las líneas, en la esquina que elijas. El marco se genera sin personaje.'),
+          value: _ovEnabled,
+          onChanged: (v) => setState(() => _ovEnabled = v),
+        ),
+        if (_ovEnabled) ...[
+          Row(children: [
+            const Text('Esquina'),
+            const SizedBox(width: 12),
+            DropdownButton<String>(
+              value: _ovCorner,
+              items: const [
+                DropdownMenuItem(value: 'br', child: Text('Abajo derecha')),
+                DropdownMenuItem(value: 'bl', child: Text('Abajo izquierda')),
+                DropdownMenuItem(value: 'tr', child: Text('Arriba derecha')),
+                DropdownMenuItem(value: 'tl', child: Text('Arriba izquierda')),
+              ],
+              onChanged: (v) => setState(() => _ovCorner = v ?? _ovCorner),
+            ),
+          ]),
+          Row(children: [
+            const SizedBox(width: 70, child: Text('Tamaño')),
+            Expanded(child: Slider(value: _ovSize, min: 0.10, max: 0.30, divisions: 20,
+                label: '${(_ovSize * 100).round()} %', onChanged: (v) => setState(() => _ovSize = v))),
+            Text('${(_ovSize * 100).round()} %'),
+          ]),
+          Row(children: [
+            const SizedBox(width: 70, child: Text('Opacidad')),
+            Expanded(child: Slider(value: _ovOpacity, min: 0.10, max: 1.0, divisions: 18,
+                label: '${(_ovOpacity * 100).round()} %', onChanged: (v) => setState(() => _ovOpacity = v))),
+            Text('${(_ovOpacity * 100).round()} %'),
+          ]),
+        ],
+        if (_hasDividers) ...[
+          const SectionTitle('Separadores de mes'),
+          DropdownButtonFormField<String>(
+            value: _sepMode,
+            decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+            items: const [
+              DropdownMenuItem(value: 'uno', child: Text('Una imagen para todos los meses (1 imagen)')),
+              DropdownMenuItem(value: 'propias', child: Text('Mis imágenes o fotos (una por mes)')),
+              DropdownMenuItem(value: 'estacion', child: Text('IA por estación (4 imágenes, ~16 ¢)')),
+              DropdownMenuItem(value: 'mes', child: Text('IA por mes (12 imágenes, ~48 ¢)')),
+            ],
+            onChanged: (v) => setState(() => _sepMode = v ?? _sepMode),
+          ),
+          const SizedBox(height: 8),
+          if (_sepMode == 'propias') ...[
+            Text('Toca un mes para elegir su imagen. Los vacíos usan el arte generado.', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 6),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (var m = 1; m <= 12; m++)
+                GestureDetector(
+                  onTap: () => _pickSeparator(m),
+                  onLongPress: () => setState(() => _sepByMonth.remove(m)),
+                  child: Container(
+                    width: 64, height: 84,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      borderRadius: BorderRadius.circular(8),
+                      image: _sepByMonth[m] == null ? null : DecorationImage(image: MemoryImage(_sepByMonth[m]!), fit: BoxFit.cover),
+                    ),
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      color: Colors.white70,
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      width: double.infinity,
+                      child: Text(const ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m - 1],
+                          textAlign: TextAlign.center, style: const TextStyle(fontSize: 11)),
+                    ),
+                  ),
+                ),
+            ]),
+            Text('Mantén presionado para quitar una imagen.', style: Theme.of(context).textTheme.bodySmall),
+          ],
+          if ((_sepMode == 'estacion' || _sepMode == 'mes') && _busySeparator)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(children: [
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 10),
+                Text('Generando separadores… $_sepProgress / ${_sepMode == 'estacion' ? 4 : 12}'),
+              ]),
+            ),
+        ],
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Margen de anillos a la derecha en el reverso'),
@@ -418,6 +617,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
           onPressed: (_busyCover || _busyCharacter || _busyInterior || _busySeparator) ? null : _generateAll,
           icon: const Icon(Icons.auto_awesome),
           label: const Text('Generar arte con IA'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _busyPreview ? null : _preview,
+          icon: _busyPreview
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.preview),
+          label: const Text('Vista previa (8 hojas)'),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
@@ -457,10 +664,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ),
         if (_hasDividers)
           ArtPreview(
-            label: 'Separadores de mes',
-            bytes: _separator,
+            label: _sepMode == 'uno' ? 'Separadores de mes' : 'Separadores (enero)',
+            bytes: _sepMode == 'uno' ? _separator : (_sepByMonth[1] ?? _separator),
             busy: _busySeparator,
-            onRegenerate: _genSeparator,
+            onRegenerate: _sepMode == 'propias' ? null : (_sepMode == 'uno' ? _genSeparator : _genSeparatorsMulti),
             height: 420,
           ),
     ];
@@ -468,7 +675,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (!wide) {
       // Celular / iPad vertical: todo en una sola lista, con la vista previa
       // justo debajo de los botones.
-      final genIdx = formItems.length - 5; // antes del botón "Generar"
+      final genIdx = formItems.length - 7; // antes del botón "Generar"
       return ListView(
         padding: const EdgeInsets.all(20),
         children: [

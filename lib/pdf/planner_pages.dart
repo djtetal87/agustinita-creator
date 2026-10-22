@@ -99,11 +99,24 @@ extension PlannerPagesExt on AgendaBuilder {
             decoration: pw.BoxDecoration(border: pw.Border.all(color: s.rule, width: 0.25)),
             padding: pw.EdgeInsets.all(0.8 * mm),
             alignment: pw.Alignment.topLeft,
-            child: cells[r * 7 + c] == null ? null : pw.Text('${cells[r * 7 + c]}',
-                style: pw.TextStyle(font: f.bold, fontSize: big ? 6 : 4.5,
-                    color: (c == 6 || isHoliday(hs, DateTime(year, month, cells[r * 7 + c]!))) ? s.accent : PdfColors.grey800)),
+            child: cells[r * 7 + c] == null ? null : _dayCell(cells[r * 7 + c]!,
+                holiday: isHoliday(hs, DateTime(year, month, cells[r * 7 + c]!)), sunday: c == 6, big: big),
           ))]),
     ]);
+  }
+
+  /// Número del día; los feriados llevan un círculo de color detrás.
+  pw.Widget _dayCell(int day, {required bool holiday, required bool sunday, required bool big}) {
+    final size = big ? 4.2 : 3.0;
+    final txt = pw.Text('$day', style: pw.TextStyle(font: f.bold, fontSize: big ? 6 : 4.5,
+        color: holiday ? PdfColors.white : sunday ? s.accent : PdfColors.grey800));
+    if (!holiday) return txt;
+    return pw.Container(
+      width: size * mm, height: size * mm,
+      decoration: pw.BoxDecoration(shape: pw.BoxShape.circle, color: s.accent),
+      alignment: pw.Alignment.center,
+      child: txt,
+    );
   }
 
   // ---------- render ----------
@@ -122,7 +135,7 @@ extension PlannerPagesExt on AgendaBuilder {
         return pw.Column(children: [
           _title('Calendario $y'),
           pw.SizedBox(height: 1 * mm),
-          pw.Text('Feriados de Chile en color', style: _small),
+          pw.Text('Feriados de Chile marcados con círculo', style: _small),
           pw.SizedBox(height: 2 * mm),
           pw.Expanded(child: pw.GridView(
             crossAxisCount: 3, childAspectRatio: 0.95, crossAxisSpacing: 2.5 * mm, mainAxisSpacing: 2 * mm,
@@ -144,10 +157,10 @@ extension PlannerPagesExt on AgendaBuilder {
             pw.Container(
               padding: pw.EdgeInsets.symmetric(vertical: 1.3 * mm),
               decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: s.rule, width: 0.25))),
-              child: pw.Row(children: [
-                pw.Container(width: 22 * mm, child: pw.Text('${_dowLong[h.date.weekday - 1].substring(0, 3)} ${_d2(h.date.day)} ${_monthNames[h.date.month - 1].substring(0, 3)}',
-                    style: pw.TextStyle(font: f.bold, fontSize: 6, color: s.accent))),
-                pw.Expanded(child: pw.Text(h.name, style: _lbl)),
+              child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+                pw.Container(width: 24 * mm, child: pw.Text('${_dowLong[h.date.weekday - 1].substring(0, 3)} ${_d2(h.date.day)} ${_monthNames[h.date.month - 1].substring(0, 3)}',
+                    style: pw.TextStyle(font: f.bold, fontSize: 6.5, color: s.titleFg))),
+                pw.Expanded(child: pw.Text(h.name, style: pw.TextStyle(font: f.regular, fontSize: 6.5, color: PdfColors.grey800))),
               ]),
             ),
           pw.SizedBox(height: 3 * mm),

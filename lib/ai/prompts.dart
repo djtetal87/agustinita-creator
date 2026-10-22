@@ -60,7 +60,7 @@ $_noText
 Marco decorativo para las páginas interiores de una agenda, formato vertical.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
-COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave y en colores pastel claros, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra), ${hasCharacter ? 'con el personaje de la imagen de referencia asomado en la esquina inferior derecha, PEQUEÑO (no más del 15 % de la altura de la página)' : 'con un personaje tierno PEQUEÑO (no más del 15 % de la altura) asomado en la esquina inferior derecha'}. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío; los adornos no entran al centro. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
+COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave y en colores pastel claros, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra). SIN personajes ni personas: solo adornos. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío; los adornos no entran al centro. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
 '''
@@ -69,16 +69,39 @@ $_noText
 
   /// Separadores de mes: arte de página completa (como un post-it sin pauta),
   /// personaje grande, franja inferior despejada para el nombre del mes.
+  static const monthHints = <String>[
+    'enero: verano, playa, sol, helados, vacaciones',
+    'febrero: verano, sandía, piscina, flores de verano',
+    'marzo: vuelta a clases, otoño que empieza, hojas doradas',
+    'abril: otoño, hojas naranjas y café, té caliente',
+    'mayo: otoño, lluvia suave, paraguas, chocolate caliente',
+    'junio: invierno, bufanda, nieve suave, luces cálidas',
+    'julio: invierno, vacaciones de invierno, cocoa, lana',
+    'agosto: fin del invierno, volantines, viento',
+    'septiembre: primavera y Fiestas Patrias de Chile, flores, volantines, banderitas',
+    'octubre: primavera, flores por todos lados, abejas, mariposas',
+    'noviembre: primavera, picnic, cerezos, sol suave',
+    'diciembre: Navidad y verano, luces, regalos, estrellas',
+  ];
+  static const seasonHints = <String>[
+    'verano (diciembre a febrero): playa, sol, helados',
+    'otoño (marzo a mayo): hojas doradas, té, lluvia suave',
+    'invierno (junio a agosto): bufanda, nieve suave, luces cálidas',
+    'primavera (septiembre a noviembre): flores, mariposas, volantines',
+  ];
+
   static String monthDivider({
     required StyleSpec style,
     required String concept,
     required String extra,
     required bool fromCover,
+    String seasonHint = '',
   }) {
     return '''
 ${fromCover ? 'Usa la imagen adjunta como referencia de estilo, paleta, personaje y adornos, y genera una' : 'Genera una'} ilustración de página completa para los SEPARADORES de mes de una agenda, formato vertical.
 ${fromCover ? '' : 'ESTÉTICA: ${style.aiPrompt}.'}
 ${_concept(concept)}
+${seasonHint.isEmpty ? '' : 'ÉPOCA DEL AÑO: $seasonHint. Que el ambiente, los colores y los adornos reflejen esa época.'}
 COMPOSICIÓN: ${fromCover ? 'el mismo personaje de la referencia' : 'un personaje tierno protagonista'} grande en el centro, rodeado de adornos del tema; fondo con patrón suave; la franja inferior (25 % de la altura) lisa y de color suave, sin personaje ni objetos, para escribir el nombre del mes después. Estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
@@ -92,7 +115,7 @@ $_noText
     return '''
 Usa la imagen adjunta (portada de una agenda) como referencia de estilo, paleta, personaje y adornos, y genera un MARCO para las páginas interiores de esa misma agenda, formato vertical.
 ${_concept(concept)}
-COMPOSICIÓN: los mismos adornos y colores de la portada, pero SOLO en los bordes y esquinas (orillas), más suaves y pequeños; si la portada tiene un personaje, asómalo PEQUEÑO (máximo 15 % de la altura) en la esquina inferior derecha. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. Fondo blanco, estilo papelería, alta resolución.
+COMPOSICIÓN: los mismos adornos y colores de la portada, pero SOLO en los bordes y esquinas (orillas), más suaves y pequeños; SIN el personaje ni personas (solo adornos). El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. Fondo blanco, estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
 '''

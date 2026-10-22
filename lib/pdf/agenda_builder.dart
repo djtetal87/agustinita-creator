@@ -25,6 +25,8 @@ class AgendaJob {
   final bool coverHasText; // true = no escribir nombre/frase sobre la portada
   final bool mirrorBack; // margen de anillos a la derecha en el reverso
   final AgendaSpec spec; // A5 o media carta
+  final Map<int, Uint8List> separatorArts; // arte por mes (1-12); si falta, separatorArt
+  final CharacterOverlay overlay; // personaje semitransparente en las páginas con pauta
 
   const AgendaJob({
     required this.name,
@@ -39,7 +41,18 @@ class AgendaJob {
     this.coverHasText = false,
     this.mirrorBack = false,
     this.spec = AgendaSpec.a5,
+    this.separatorArts = const {},
+    this.overlay = const CharacterOverlay(),
   });
+}
+
+/// Dónde y cómo va el personaje sobre las páginas interiores.
+class CharacterOverlay {
+  final bool enabled;
+  final String corner; // br, bl, tr, tl
+  final double sizePct; // fracción de la altura de la página (0.10–0.30)
+  final double opacity; // 0–1
+  const CharacterOverlay({this.enabled = true, this.corner = 'br', this.sizePct = 0.18, this.opacity = 0.30});
 }
 
 class AgendaBuilder {
@@ -51,6 +64,15 @@ class AgendaBuilder {
   AgendaSpec get sp => job.spec;
   late final pw.MemoryImage? _interior =
       job.interiorArt == null ? null : pw.MemoryImage(job.interiorArt!);
+  late final pw.MemoryImage? _character =
+      job.characterArt == null ? null : pw.MemoryImage(job.characterArt!);
+  final Map<int, pw.MemoryImage> _sepCache = {};
+  pw.MemoryImage? _separatorFor(int month) {
+    final b = job.separatorArts[month];
+    if (b == null) return _separator;
+    return _sepCache.putIfAbsent(month, () => pw.MemoryImage(b));
+  }
+
   late final pw.MemoryImage? _separator = job.separatorArt != null
       ? pw.MemoryImage(job.separatorArt!)
       : job.coverArt != null
@@ -66,7 +88,7 @@ class AgendaBuilder {
       if (i >= pp.length) return _half(null, number, ringLeft);
       final p = pp[i];
       final art = sectionDef(p.kind).artOnly;
-      return _half(_bodyWithNumber(plannerBody(p), number), number, ringLeft, artPage: art);
+      return _half(_bodyWithNumber(plannerBody(p), number), number, ringLeft, artPage: art, month: p.month);
     }
     if (i >= job.pages.length) return _half(null, number, ringLeft);
     final def = job.pages[i];
@@ -115,12 +137,15 @@ class AgendaBuilder {
   /// Media hoja: una página con su margen para los anillos.
   /// [body] null = página en blanco. [artPage] = fondo de arte completo
   /// (separadores, página del nombre) en vez del marco interior.
-  pw.Widget _half(pw.Widget? body, int number, bool ringLeft, {bool artPage = false}) {
+  pw.Widget _half(pw.Widget? body, int number, bool ringLeft, {bool artPage = false, int month = 0}) {
     final frameLeft = ringLeft
         ? AgendaSpec.ringMargin
         : sp.halfW - AgendaSpec.ringMargin - sp.frameW;
     final isBlank = body == null;
-    final bg = artPage ? _separator : _interior;
+    final bg = artPage ? (month > 0 ? _separatorFor(month) : _separator) : _interior;
+    final ov = job.overlay;
+    final showChar = !artPage && ov.enabled && _character != null;
+    final charH = sp.frameH * ov.sizePct;
     return pw.SizedBox(
       width: sp.halfW * mm,
       height: sp.sheetH * mm,
@@ -158,12 +183,23 @@ class AgendaBuilder {
                     verticalRadius: AgendaSpec.frameRadius * mm,
                     child: pw.Image(bg, fit: pw.BoxFit.cover),
                   ),
+                // personaje semitransparente, DEBAJO del contenido
+                if (showChar)
+                  pw.Positioned(
+                    left: ov.corner.endsWith('l') ? 2 * mm : null,
+                    right: ov.corner.endsWith('r') ? 2 * mm : null,
+                    top: ov.corner.startsWith('t') ? 2 * mm : null,
+                    bottom: ov.corner.startsWith('b') ? 2 * mm : null,
+                    child: pw.Opacity(
+                      opacity: ov.opacity,
+                      child: pw.Container(height: charH * mm, child: pw.Image(_character!, fit: pw.BoxFit.contain)),
+                    ),
+                  ),
                 pw.Padding(
-                  // con marco ilustrado el contenido se aleja del borde y deja
-                  // libre la franja inferior donde asoma el personaje
+                  // con marco ilustrado el contenido se aleja un poco más del borde
                   padding: artPage || bg == null
                       ? pw.EdgeInsets.all(AgendaSpec.innerPad * mm)
-                      : pw.EdgeInsets.fromLTRB(13 * mm, 11 * mm, 13 * mm, 24 * mm),
+                      : pw.EdgeInsets.fromLTRB(12 * mm, 11 * mm, 12 * mm, 12 * mm),
                   child: body!,
                 ),
               ]),
