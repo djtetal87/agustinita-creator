@@ -488,8 +488,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
         Builder(builder: (ctx) {
           final n = _plannerPages().length;
           final sheets = (n / 2).ceil();
-          return Text('Total: $n páginas = $sheets hojas (${AgendaSpec.byId(_sizeId).id == 'a5' ? 'A4' : 'carta'} doble cara)',
-              style: Theme.of(context).textTheme.titleSmall);
+          final sz = AgendaSpec.byId(_sizeId).id == 'a5';
+          final txt = _singlePages
+              ? 'Total: $n páginas ${sz ? 'A5' : 'media carta'} = $sheets hojas ${sz ? 'A5' : 'media carta'} impresas a doble cara'
+              : 'Total: $n páginas = $sheets hojas ${sz ? 'A4' : 'carta'} a doble cara (2 páginas por cara, cortar al medio)';
+          return Text(txt, style: Theme.of(context).textTheme.titleSmall);
         }),
         const SizedBox(height: 8),
         OutlinedButton.icon(

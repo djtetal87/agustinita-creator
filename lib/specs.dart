@@ -31,10 +31,10 @@ class AgendaSpec {
   });
 
   static const a5 = AgendaSpec(
-      id: 'a5', label: 'A5 (148 × 210 mm, hoja A4)',
+      id: 'a5', label: 'A5 (148 × 210 mm)',
       sheetW: 297.0, sheetH: 210.0, coverSheetW: 210.0, coverSheetH: 297.0);
   static const carta = AgendaSpec(
-      id: 'carta', label: 'Media carta (139,7 × 215,9 mm, hoja carta)',
+      id: 'carta', label: 'Media carta (139,7 × 215,9 mm)',
       sheetW: letterH, sheetH: letterW, coverSheetW: letterW, coverSheetH: letterH);
   static const all = [a5, carta];
   static AgendaSpec byId(String id) => all.firstWhere((e) => e.id == id, orElse: () => a5);
