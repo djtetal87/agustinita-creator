@@ -11,23 +11,49 @@ const double letterW = 215.9;
 const double letterH = 279.4;
 
 /// Agenda anillada (anillado 15 mm, impresión doble cara).
-/// Hoja carta horizontal cortada a la mitad: 2 páginas por cara.
+/// Hoja horizontal cortada a la mitad: 2 páginas por cara.
+/// Dos formatos: A5 (hoja A4) y media carta (hoja carta).
 class AgendaSpec {
-  static const double sheetW = letterH; // 279.4 (horizontal)
-  static const double sheetH = letterW; // 215.9
-  static const double halfW = sheetW / 2; // 139.7 cada página
+  final String id;
+  final String label;
+  final double sheetW; // hoja horizontal, mm
+  final double sheetH;
+  final double coverSheetW; // hoja vertical donde va la portada sola
+  final double coverSheetH;
+
+  const AgendaSpec({
+    required this.id,
+    required this.label,
+    required this.sheetW,
+    required this.sheetH,
+    required this.coverSheetW,
+    required this.coverSheetH,
+  });
+
+  static const a5 = AgendaSpec(
+      id: 'a5', label: 'A5 (148 × 210 mm, hoja A4)',
+      sheetW: 297.0, sheetH: 210.0, coverSheetW: 210.0, coverSheetH: 297.0);
+  static const carta = AgendaSpec(
+      id: 'carta', label: 'Media carta (139,7 × 215,9 mm, hoja carta)',
+      sheetW: letterH, sheetH: letterW, coverSheetW: letterW, coverSheetH: letterH);
+  static const all = [a5, carta];
+  static AgendaSpec byId(String id) => all.firstWhere((e) => e.id == id, orElse: () => a5);
+
+  double get halfW => sheetW / 2; // ancho de cada página
+  double get pageH => sheetH;
   static const double ringMargin = 15.0; // franja para los anillos
-  static const double frameW = 120.3;
-  static const double frameH = 185.9;
+  static const double outerMargin = 5.0; // margen opuesto al anillado
   static const double frameTop = 15.0;
+  double get frameW => halfW - ringMargin - outerMargin;
+  double get frameH => pageH - frameTop * 2;
   static const double frameRadius = 4.0;
   static const double innerPad = 6.0; // del marco al contenido
-  static const int sheets = 24; // 24 hojas → 48 páginas
-  static const int pages = sheets * 2;
+  double get coverW => halfW;
+  double get coverH => pageH;
 
-  /// Portada: va sola en su hoja (carta vertical), del tamaño de una página.
-  static const double coverW = halfW;
-  static const double coverH = sheetH;
+  /// Tamaño que se le pide a la IA (misma proporción que la página).
+  int get aiWidth => 1088;
+  int get aiHeight => (1088 * pageH / halfW / 16).round() * 16;
 }
 
 /// Post-its: tamaño de cada bloque y cómo se arman en una hoja carta.

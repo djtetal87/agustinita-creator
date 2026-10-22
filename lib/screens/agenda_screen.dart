@@ -21,14 +21,24 @@ class AgendaScreen extends StatefulWidget {
 }
 
 class _AgendaScreenState extends State<AgendaScreen> {
-  String _name = '';
-  String _phrase = '';
+  // Controladores persistentes: así los campos no se borran al redibujar.
+  final _nameC = TextEditingController();
+  final _phraseC = TextEditingController();
+  final _conceptC = TextEditingController();
+  final _extraC = TextEditingController();
+  final _interiorExtraC = TextEditingController();
+  final _customPagesC = TextEditingController();
+  String get _name => _nameC.text;
+  String get _phrase => _phraseC.text;
+  String get _concept => _conceptC.text;
+  String get _extra => _extraC.text;
+  String get _interiorExtra => _interiorExtraC.text;
+  String get _customPages => _customPagesC.text;
   String _styleId = 'kawaii';
-  String _concept = '';
-  String _extra = '';
+  String _sizeId = 'a5';
+  bool _nameOnCover = true; // escribir nombre y frase sobre la portada
   int _year = DateTime.now().year;
   int _sheets = 24;
-  String _customPages = '';
   bool _mirrorBack = false;
 
   Uint8List? _photo;
@@ -37,7 +47,6 @@ class _AgendaScreenState extends State<AgendaScreen> {
   bool _coverUploaded = false; // portada hecha en otra app
   Uint8List? _interior;
   bool _illustratedInterior = true;
-  String _interiorExtra = '';
   bool _busyCharacter = false;
   bool _busyCover = false;
   bool _busyInterior = false;
@@ -84,7 +93,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
           style: _style, concept: _concept, extra: _extra, hasCharacter: _character != null);
       final img = _character != null
           ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
-          : await _ai.textToImage(prompt, width: 992, height: 1536);
+          : await _ai.textToImage(prompt, width: AgendaSpec.byId(_sizeId).aiWidth, height: AgendaSpec.byId(_sizeId).aiHeight);
       setState(() => _cover = img);
     } catch (e) {
       if (mounted) toast(context, e.toString());
@@ -99,6 +108,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     setState(() {
       _cover = b;
       _coverUploaded = true;
+      _nameOnCover = false;
     });
   }
 
@@ -108,7 +118,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     try {
       final extra = [_extra, _interiorExtra].where((e) => e.trim().isNotEmpty).join('. ');
       Uint8List img;
-      if (_coverUploaded && _cover != null) {
+      if ((_coverUploaded || _styleId == 'referencia') && _cover != null) {
         // interior basado en la portada que subió el usuario
         img = await _ai.imageToImage(
             Prompts.interiorFromCover(concept: _concept, extra: extra), _cover!, aspectRatio: '2:3');
@@ -117,7 +127,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
             style: _style, concept: _concept, extra: extra, hasCharacter: _character != null);
         img = _character != null
             ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
-            : await _ai.textToImage(prompt, width: 992, height: 1536);
+            : await _ai.textToImage(prompt, width: AgendaSpec.byId(_sizeId).aiWidth, height: AgendaSpec.byId(_sizeId).aiHeight);
       }
       setState(() => _interior = img);
     } catch (e) {
@@ -137,10 +147,6 @@ class _AgendaScreenState extends State<AgendaScreen> {
   }
 
   Future<void> _export() async {
-    if (_name.trim().isEmpty) {
-      toast(context, 'Falta el nombre.');
-      return;
-    }
     setState(() => _busyExport = true);
     try {
       final fonts = await PdfFonts.load();
@@ -152,11 +158,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
         coverArt: _cover,
         characterArt: _character,
         interiorArt: _illustratedInterior ? _interior : null,
-        coverHasText: _coverUploaded,
+        coverHasText: !_nameOnCover,
         mirrorBack: _mirrorBack,
+        spec: AgendaSpec.byId(_sizeId),
       );
       final b = AgendaBuilder(job, fonts);
-      final slug = _name.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
+      var slug = _name.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
+      if (slug.isEmpty) slug = 'sin_nombre';
       final interior = await b.buildInterior();
       final cover = await b.buildCover();
       // Los PDF ya están listos: el botón vuelve a la normalidad antes de abrir
@@ -180,17 +188,17 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final formItems = <Widget>[
         Text('Agenda anillada 15 mm', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
-        Text('Interior doble cara (2 páginas por cara) + portada en hoja aparte. Margen de anillos: 15 mm.',
+        Text('Interior doble cara (2 páginas por hoja) + portada en hoja aparte. Margen de anillos: 15 mm. A5 por defecto.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 16),
-        Field('Nombre de la persona', 'Agustina', (v) => _name = v, icon: Icons.person),
-        Field('Texto a decir (frase)', 'Sigue brillando cada día', (v) => _phrase = v, icon: Icons.format_quote),
+        Field('Nombre de la persona (opcional si la portada ya lo trae)', 'Agustina', (_) {}, icon: Icons.person, controller: _nameC),
+        Field('Texto a decir (frase, opcional)', 'Sigue brillando cada día', (_) {}, icon: Icons.format_quote, controller: _phraseC),
         const SectionTitle('Estilo'),
         StyleChips(selected: _styleId, onChanged: (v) => setState(() => _styleId = v)),
         const SizedBox(height: 16),
         Field('Concepto', 'romántica · para profesora · para enfermero · amante de los gatos',
-            (v) => _concept = v, icon: Icons.lightbulb_outline),
-        Field('Indicaciones extra (opcional)', 'fondo celeste, sin corazones…', (v) => _extra = v, maxLines: 2),
+            (_) {}, icon: Icons.lightbulb_outline, controller: _conceptC),
+        Field('Indicaciones extra (opcional)', 'fondo celeste, sin corazones…', (_) {}, maxLines: 2, controller: _extraC),
         const SectionTitle('Foto para convertir en personaje (opcional)'),
         Row(children: [
           OutlinedButton.icon(
@@ -232,6 +240,23 @@ class _AgendaScreenState extends State<AgendaScreen> {
             ? 'Se usa tal cual (sin escribir el nombre encima) y el marco interior se genera a partir de ella.'
             : 'Si subes tu portada, la IA no la genera y el interior se basa en tu diseño.',
             style: Theme.of(context).textTheme.bodySmall),
+        const SectionTitle('Tamaño'),
+        DropdownButtonFormField<String>(
+          value: _sizeId,
+          decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+          items: [for (final sp in AgendaSpec.all) DropdownMenuItem(value: sp.id, child: Text(sp.label))],
+          onChanged: (v) => setState(() => _sizeId = v ?? _sizeId),
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Escribir nombre y frase sobre la portada'),
+          subtitle: Text(_coverUploaded
+              ? 'Apágalo si tu portada ya trae el nombre.'
+              : 'Banda al pie de la portada con el nombre y la frase.'),
+          value: _nameOnCover,
+          onChanged: (v) => setState(() => _nameOnCover = v),
+        ),
         const SectionTitle('Páginas'),
         Row(children: [
           const Text('Hojas (2 páginas por hoja)'),
@@ -258,9 +283,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
         Field(
           'Páginas extra (una por línea)',
           'Horario de clases: cuadrícula\nCumpleaños: lista numerada x2\nMetas del mes: checklist',
-          (v) => _customPages = v,
+          (_) {},
           maxLines: 4,
           icon: Icons.playlist_add,
+          controller: _customPagesC,
         ),
         Text('Pautas: rayado · caligrafía · checklist · cuadrícula · punteado · tabla · recuadro · lista numerada. "xN" repite la página N veces. Van después de los calendarios.',
             style: Theme.of(context).textTheme.bodySmall),
@@ -274,7 +300,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
         ),
         if (_illustratedInterior)
           Field('Indicaciones para el interior (opcional)', 'solo flores, sin personaje · más suave que la portada',
-              (v) => _interiorExtra = v, maxLines: 2),
+              (_) {}, maxLines: 2, controller: _interiorExtraC),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Margen de anillos a la derecha en el reverso'),

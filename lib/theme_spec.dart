@@ -90,7 +90,21 @@ class StyleSpec {
         'ilustración minimalista de una sola línea, mucho espacio en blanco, un solo color de acento, formas geométricas simples, estilo escandinavo',
   );
 
-  static const all = [kawaii, pastel, floral, gothic, anime, minimal];
+  /// "Similar a la portada de referencia": colores neutros-rosados para el
+  /// papel; la IA copia el estilo de la portada subida.
+  static const reference = StyleSpec(
+    id: 'referencia',
+    label: 'Similar a la portada de referencia',
+    frame: PdfColor.fromInt(0xFFE2C4D6),
+    titleBg: PdfColor.fromInt(0xFFF6E7EF),
+    titleFg: PdfColor.fromInt(0xFF6B4A7E),
+    rule: PdfColor.fromInt(0xFF9A8AB5),
+    accent: PdfColor.fromInt(0xFFE49BBE),
+    aiPrompt:
+        'el MISMO estilo de ilustración, paleta de colores, tipo de línea y nivel de detalle de la imagen de referencia',
+  );
+
+  static const all = [kawaii, pastel, floral, gothic, anime, minimal, reference];
 
   static StyleSpec byId(String id) =>
       all.firstWhere((s) => s.id == id, orElse: () => kawaii);

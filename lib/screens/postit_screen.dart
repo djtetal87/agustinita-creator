@@ -25,8 +25,10 @@ class _PostitScreenState extends State<PostitScreen> {
   static const titlePresets = ['', 'Compras', 'Plan de comidas', 'Pendientes', 'Notas', 'Esta semana', 'Recordar'];
 
   String _styleId = 'kawaii';
-  String _concept = '';
-  String _extra = '';
+  final _conceptC = TextEditingController();
+  final _extraC = TextEditingController();
+  String get _concept => _conceptC.text;
+  String get _extra => _extraC.text;
   String _title = '';
   PostitContent _content = PostitContent.ruled;
   int _sheets = 1;
@@ -100,8 +102,8 @@ class _PostitScreenState extends State<PostitScreen> {
         const SectionTitle('Estilo'),
         StyleChips(selected: _styleId, onChanged: (v) => setState(() => _styleId = v)),
         const SizedBox(height: 16),
-        Field('Concepto', 'gatitos · cocina · plantas · profesora…', (v) => _concept = v, icon: Icons.lightbulb_outline),
-        Field('Indicaciones extra (opcional)', 'más flores, colores menta…', (v) => _extra = v, maxLines: 2),
+        Field('Concepto', 'gatitos · cocina · plantas · profesora…', (_) {}, icon: Icons.lightbulb_outline, controller: _conceptC),
+        Field('Indicaciones extra (opcional)', 'más flores, colores menta…', (_) {}, maxLines: 2, controller: _extraC),
         const SectionTitle('Título del bloque'),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final t in titlePresets)

@@ -62,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 32),
         Text('Medidas fijas', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 6),
-        const Text('• Agenda: carta horizontal, 2 páginas de 139,7 × 215,9 mm por cara, marco 120 × 186 mm, anillos 15 mm.\n'
+        const Text('• Agenda: A5 (hoja A4 horizontal, 2 páginas de 148,5 × 210 mm) o media carta; anillos 15 mm.\n'
             '• Post-it cuadrado 100 × 100 mm (4 por carta) · horizontal 150 × 90 mm (2) · vertical 70 × 150 mm (3).\n'
             '• Portada de agenda sola en hoja carta, con marcas de corte.'),
       ],

@@ -16,8 +16,9 @@ class AgendaJob {
   final Uint8List? coverArt; // ilustración generada (portada)
   final Uint8List? characterArt; // personaje (foto → personaje) para la página del nombre
   final Uint8List? interiorArt; // marco ilustrado para todas las páginas interiores
-  final bool coverHasText; // true = la portada ya trae nombre (subida por el usuario)
+  final bool coverHasText; // true = no escribir nombre/frase sobre la portada
   final bool mirrorBack; // margen de anillos a la derecha en el reverso
+  final AgendaSpec spec; // A5 o media carta
 
   const AgendaJob({
     required this.name,
@@ -29,6 +30,7 @@ class AgendaJob {
     this.interiorArt,
     this.coverHasText = false,
     this.mirrorBack = false,
+    this.spec = AgendaSpec.a5,
   });
 }
 
@@ -38,6 +40,7 @@ class AgendaBuilder {
   AgendaBuilder(this.job, this.f);
 
   StyleSpec get s => job.style;
+  AgendaSpec get sp => job.spec;
   late final pw.MemoryImage? _interior =
       job.interiorArt == null ? null : pw.MemoryImage(job.interiorArt!);
 
@@ -61,21 +64,21 @@ class AgendaBuilder {
 
   pw.Page _sheet(PageDef a, PageDef b, int na, int nb, {required bool ringLeft}) {
     return pw.Page(
-      pageFormat: PdfPageFormat(AgendaSpec.sheetW * mm, AgendaSpec.sheetH * mm),
+      pageFormat: PdfPageFormat(sp.sheetW * mm, sp.sheetH * mm),
       margin: pw.EdgeInsets.zero,
       build: (ctx) => pw.Stack(children: [
         pw.Positioned(left: 0, top: 0, child: _half(a, na, ringLeft)),
         pw.Positioned(
-            left: AgendaSpec.halfW * mm, top: 0, child: _half(b, nb, ringLeft)),
+            left: sp.halfW * mm, top: 0, child: _half(b, nb, ringLeft)),
         // marca de corte central
         pw.Positioned(
-          left: AgendaSpec.halfW * mm - 0.15,
+          left: sp.halfW * mm - 0.15,
           top: 0,
           child: pw.Container(width: 0.3, height: 4 * mm, color: PdfColors.grey600),
         ),
         pw.Positioned(
-          left: AgendaSpec.halfW * mm - 0.15,
-          top: (AgendaSpec.sheetH - 4) * mm,
+          left: sp.halfW * mm - 0.15,
+          top: (sp.sheetH - 4) * mm,
           child: pw.Container(width: 0.3, height: 4 * mm, color: PdfColors.grey600),
         ),
       ]),
@@ -86,19 +89,19 @@ class AgendaBuilder {
   pw.Widget _half(PageDef def, int number, bool ringLeft) {
     final frameLeft = ringLeft
         ? AgendaSpec.ringMargin
-        : AgendaSpec.halfW - AgendaSpec.ringMargin - AgendaSpec.frameW;
+        : sp.halfW - AgendaSpec.ringMargin - sp.frameW;
     final isBlank = def.kind == PageKind.blank;
     return pw.SizedBox(
-      width: AgendaSpec.halfW * mm,
-      height: AgendaSpec.sheetH * mm,
+      width: sp.halfW * mm,
+      height: sp.sheetH * mm,
       child: pw.Stack(children: [
         // guía punteada del anillado (no se imprime fuerte)
         pw.Positioned(
-          left: (ringLeft ? AgendaSpec.ringMargin : AgendaSpec.halfW - AgendaSpec.ringMargin) * mm,
+          left: (ringLeft ? AgendaSpec.ringMargin : sp.halfW - AgendaSpec.ringMargin) * mm,
           top: 0,
           child: pw.Container(
             width: 0.3,
-            height: AgendaSpec.sheetH * mm,
+            height: sp.sheetH * mm,
             decoration: const pw.BoxDecoration(
                 border: pw.Border(
                     left: pw.BorderSide(
@@ -112,8 +115,8 @@ class AgendaBuilder {
             left: frameLeft * mm,
             top: AgendaSpec.frameTop * mm,
             child: pw.Container(
-              width: AgendaSpec.frameW * mm,
-              height: AgendaSpec.frameH * mm,
+              width: sp.frameW * mm,
+              height: sp.frameH * mm,
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: s.frame, width: 0.8),
                 borderRadius: pw.BorderRadius.circular(AgendaSpec.frameRadius * mm),
@@ -371,11 +374,12 @@ class AgendaBuilder {
               child: pw.Image(pw.MemoryImage(job.characterArt!), fit: pw.BoxFit.contain),
             ),
           pw.SizedBox(height: 6 * mm),
-          pw.Text(job.name, style: pw.TextStyle(font: f.display, fontSize: 20, color: s.titleFg)),
+          if (job.name.isNotEmpty)
+            pw.Text(job.name, style: pw.TextStyle(font: f.display, fontSize: 20, color: s.titleFg)),
           pw.SizedBox(height: 2 * mm),
           if (job.phrase.isNotEmpty)
             pw.Text(job.phrase, textAlign: pw.TextAlign.center,
-                style: pw.TextStyle(font: f.regular, fontSize: 7, color: s.titleFg)),
+                style: pw.TextStyle(font: f.medium, fontSize: 7.5, color: s.titleFg)),
           pw.SizedBox(height: 6 * mm),
           pw.Text('Mis ideas y mis acuerdos', style: pw.TextStyle(font: f.regular, fontSize: 6, color: PdfColors.grey600)),
         ]);
@@ -399,8 +403,8 @@ class AgendaBuilder {
   }
 
   pw.Widget _customLayout(CustomLayout l) {
-    final availH = AgendaSpec.frameH - AgendaSpec.innerPad * 2 - 18;
-    final availW = AgendaSpec.frameW - AgendaSpec.innerPad * 2;
+    final availH = sp.frameH - AgendaSpec.innerPad * 2 - 18;
+    final availW = sp.frameW - AgendaSpec.innerPad * 2;
     switch (l) {
       case CustomLayout.ruled:
         return _ruled(9);
@@ -530,18 +534,18 @@ class AgendaBuilder {
   Future<Uint8List> buildCover() async {
     final doc = pw.Document(title: 'Agenda ${job.name} — portada');
     doc.addPage(pw.Page(
-      pageFormat: PdfPageFormat(letterW * mm, letterH * mm),
+      pageFormat: PdfPageFormat(sp.coverSheetW * mm, sp.coverSheetH * mm),
       margin: pw.EdgeInsets.zero,
       build: (ctx) {
-        final left = (letterW - AgendaSpec.coverW) / 2;
-        final top = (letterH - AgendaSpec.coverH) / 2;
+        final left = (sp.coverSheetW - sp.coverW) / 2;
+        final top = (sp.coverSheetH - sp.coverH) / 2;
         return pw.Stack(children: [
           pw.Positioned(
             left: left * mm,
             top: top * mm,
             child: pw.Container(
-              width: AgendaSpec.coverW * mm,
-              height: AgendaSpec.coverH * mm,
+              width: sp.coverW * mm,
+              height: sp.coverH * mm,
               decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400, width: 0.2)),
               child: pw.Stack(fit: pw.StackFit.expand, children: [
                 if (job.coverArt != null)
@@ -566,7 +570,7 @@ class AgendaBuilder {
                       if (job.phrase.isNotEmpty) ...[
                         pw.SizedBox(height: 1.5 * mm),
                         pw.Text(job.phrase, textAlign: pw.TextAlign.center,
-                            style: pw.TextStyle(font: f.title, fontSize: 10, color: s.titleFg)),
+                            style: pw.TextStyle(font: f.medium, fontSize: 9, color: s.titleFg)),
                       ],
                     ]),
                   ),
@@ -575,7 +579,7 @@ class AgendaBuilder {
             ),
           ),
           // marcas de corte
-          ..._cropMarks(left, top, AgendaSpec.coverW, AgendaSpec.coverH),
+          ..._cropMarks(left, top, sp.coverW, sp.coverH),
         ]);
       },
     ));
