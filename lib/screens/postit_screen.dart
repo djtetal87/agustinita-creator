@@ -40,7 +40,11 @@ class _PostitScreenState extends State<PostitScreen> {
 
   final _titleCtrl = TextEditingController();
 
-  StyleSpec get _style => StyleSpec.byId(_styleId);
+  StyleSpec get _style {
+    final base = StyleSpec.byId(_styleId);
+    final ink = StyleSpec.parseHex(widget.settings.inkHex);
+    return ink == null ? base : base.withInk(ink);
+  }
   PostitSpec get p => widget.spec;
 
   @override
@@ -106,6 +110,11 @@ class _PostitScreenState extends State<PostitScreen> {
         const SizedBox(height: 16),
         Field('Concepto', 'gatitos · cocina · plantas · profesora…', (_) {}, icon: Icons.lightbulb_outline, controller: _conceptC),
         Field('Colores', 'rosado y beige · verde salvia y crema', (_) {}, icon: Icons.palette_outlined, controller: _colorsC),
+        InkPicker(
+          hex: widget.settings.inkHex,
+          onChanged: (v) => setState(() { widget.settings.inkHex = v; widget.settings.save(); }),
+        ),
+        const SizedBox(height: 8),
         Field('Indicaciones extra (opcional)', 'más flores, sin corazones…', (_) {}, maxLines: 2, controller: _extraC),
         const SectionTitle('Título del bloque'),
         Wrap(spacing: 8, runSpacing: 8, children: [

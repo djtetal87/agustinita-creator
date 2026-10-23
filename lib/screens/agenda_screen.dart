@@ -32,7 +32,16 @@ class _AgendaScreenState extends State<AgendaScreen> {
   final _interiorExtraC = TextEditingController();
   final _customPagesC = TextEditingController();
   final _colorsC = TextEditingController();
-  String get _colors => _colorsC.text;
+  String get _colors {
+    if (_colorsC.text.trim().isNotEmpty) return _colorsC.text;
+    final hex = widget.settings.inkHex;
+    if (hex.isEmpty) return '';
+    final name = StyleSpec.inkPresets.entries
+        .where((e) => '#${e.value.toRadixString(16).substring(2).toUpperCase()}' == hex.toUpperCase())
+        .map((e) => e.key)
+        .firstOrNull;
+    return 'tonos de ${name?.toLowerCase() ?? hex}, blanco y beige suave';
+  }
   String get _name => _nameC.text;
   String get _phrase => _phraseC.text;
   String get _concept => _conceptC.text;
@@ -75,7 +84,20 @@ class _AgendaScreenState extends State<AgendaScreen> {
   bool _busyExport = false;
 
   FalService get _ai => FalService(apiKey: widget.settings.falKey, textModel: widget.settings.falModel);
-  StyleSpec get _style => StyleSpec.byId(_styleId);
+  /// Estilo con la paleta derivada del color de tinta elegido (si hay).
+  StyleSpec get _style {
+    final base = StyleSpec.byId(_styleId);
+    final ink = StyleSpec.parseHex(widget.settings.inkHex);
+    return ink == null ? base : base.withInk(ink);
+  }
+  List<Color> _coverColors = const [];
+
+  Future<void> _refreshCoverColors() async {
+    final src = _cover;
+    if (src == null) { setState(() => _coverColors = const []); return; }
+    await prepareImageForColors(src);
+    if (mounted) setState(() => _coverColors = dominantColors(src));
+  }
 
   bool _check() {
     if (!widget.settings.isConfigured) {
@@ -117,6 +139,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
           : await _ai.textToImage(prompt, width: AgendaSpec.byId(_sizeId).aiWidth, height: AgendaSpec.byId(_sizeId).aiHeight);
       setState(() => _cover = img);
+      await _refreshCoverColors();
     } catch (e) {
       if (mounted) toast(context, e.toString());
     } finally {
@@ -132,6 +155,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       _coverUploaded = true;
       _nameOnCover = false;
     });
+    await _refreshCoverColors();
   }
 
   Future<void> _genInterior() async {
@@ -428,6 +452,13 @@ class _AgendaScreenState extends State<AgendaScreen> {
               onSelected: (_) => setState(() { widget.settings.titleScript = e.key; widget.settings.save(); }),
             ),
         ]),
+        const SizedBox(height: 12),
+        InkPicker(
+          hex: widget.settings.inkHex,
+          fromCover: _coverColors,
+          onChanged: (v) => setState(() { widget.settings.inkHex = v; widget.settings.save(); }),
+        ),
+        Text('Los adornos de la IA también siguen este color si "Colores" está vacío.', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         const SectionTitle('Foto para convertir en personaje (opcional)'),
         Row(children: [

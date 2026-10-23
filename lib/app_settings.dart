@@ -5,6 +5,7 @@ class AppSettings {
   static const _kFalModel = 'fal_model';
   static const _kScript = 'title_script';
   static const _kTitleStyle = 'title_style';
+  static const _kInk = 'ink_hex';
 
   static const falModels = <String, String>{
     'fal-ai/flux-pro/v1.1': 'Flux Pro 1.1 — mejor calidad, ~4 ¢',
@@ -16,7 +17,8 @@ class AppSettings {
   String falModel;
   String titleScript; // stylescript · marck · parisienne · sacramento · allura
   String titleStyle; // dual · script · plain
-  AppSettings({required this.falKey, required this.falModel, this.titleScript = 'stylescript', this.titleStyle = 'dual'});
+  String inkHex; // color del texto del papel, '' = paleta del estilo
+  AppSettings({required this.falKey, required this.falModel, this.titleScript = 'stylescript', this.titleStyle = 'dual', this.inkHex = '#6B4A7E'});
 
   static Future<AppSettings> load() async {
     final p = await SharedPreferences.getInstance();
@@ -25,6 +27,7 @@ class AppSettings {
       falModel: p.getString(_kFalModel) ?? 'fal-ai/flux-pro/v1.1',
       titleScript: p.getString(_kScript) ?? 'stylescript',
       titleStyle: p.getString(_kTitleStyle) ?? 'dual',
+      inkHex: p.getString(_kInk) ?? '#6B4A7E',
     );
   }
 
@@ -34,6 +37,7 @@ class AppSettings {
     await p.setString(_kFalModel, falModel);
     await p.setString(_kScript, titleScript);
     await p.setString(_kTitleStyle, titleStyle);
+    await p.setString(_kInk, inkHex);
   }
 
   bool get isConfigured => falKey.trim().isNotEmpty;

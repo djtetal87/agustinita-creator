@@ -108,4 +108,46 @@ class StyleSpec {
 
   static StyleSpec byId(String id) =>
       all.firstWhere((s) => s.id == id, orElse: () => kawaii);
+
+  /// Colores preestablecidos para el texto del papel.
+  static const inkPresets = <String, int>{
+    'Morado': 0xFF6B4A7E,
+    'Rosa': 0xFFC2527F,
+    'Verde salvia': 0xFF5F7F5B,
+    'Terracota': 0xFFB5654A,
+    'Azul marino': 0xFF2F4A6D,
+    'Café': 0xFF6E4B3A,
+    'Gris oscuro': 0xFF444444,
+    'Negro': 0xFF1E1E1E,
+    'Dorado': 0xFFB08D3C,
+  };
+
+  /// Copia de este estilo con la paleta derivada de un solo color base:
+  /// títulos/números en el color, líneas al 45 %, píldoras al 15 %,
+  /// borde del marco al 35 %. [ruleColor]/[pillColor] permiten ajuste fino.
+  StyleSpec withInk(PdfColor ink, {PdfColor? ruleColor, PdfColor? pillColor}) {
+    PdfColor mix(PdfColor c, double t) => PdfColor(
+          c.red + (1 - c.red) * (1 - t),
+          c.green + (1 - c.green) * (1 - t),
+          c.blue + (1 - c.blue) * (1 - t),
+        );
+    return StyleSpec(
+      id: id,
+      label: label,
+      frame: mix(ink, 0.35),
+      titleBg: pillColor ?? mix(ink, 0.15),
+      titleFg: ink,
+      rule: ruleColor ?? mix(ink, 0.45),
+      accent: mix(ink, 0.85),
+      aiPrompt: aiPrompt,
+    );
+  }
+
+  static PdfColor? parseHex(String s) {
+    var h = s.trim().replaceAll('#', '');
+    if (h.length == 3) h = h.split('').map((c) => '$c$c').join();
+    if (h.length != 6) return null;
+    final v = int.tryParse(h, radix: 16);
+    return v == null ? null : PdfColor.fromInt(0xFF000000 | v);
+  }
 }
