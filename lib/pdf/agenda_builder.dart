@@ -331,15 +331,12 @@ class AgendaBuilder {
             b = parts.sublist(1).join(' ');
           }
         }
-        w = pw.Row(
-          mainAxisSize: pw.MainAxisSize.min,
-          crossAxisAlignment: pw.CrossAxisAlignment.baseline,
-          textBaseline: pw.TextBaseline.alphabetic,
-          children: [
-            if (a.isNotEmpty) pw.Text(a, style: plain),
-            if (a.isNotEmpty) pw.SizedBox(width: 1.5 * mm),
-            pw.Text(b, style: script),
-          ],
+        // RichText comparte la línea base entre las dos fuentes
+        w = pw.RichText(
+          text: pw.TextSpan(children: [
+            if (a.isNotEmpty) pw.TextSpan(text: '$a ', style: plain),
+            pw.TextSpan(text: b, style: script),
+          ]),
         );
         break;
     }
