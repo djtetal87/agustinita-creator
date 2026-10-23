@@ -176,7 +176,11 @@ extension PlannerPagesExt on AgendaBuilder {
             crossAxisCount: 2, childAspectRatio: 1.1, crossAxisSpacing: 3 * mm, mainAxisSpacing: 2 * mm,
             children: [for (var mm2 = from; mm2 < from + 6; mm2++)
               pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                pw.Text(_monthNames[mm2 - 1], style: pw.TextStyle(font: f.bold, fontSize: 6.5, color: s.titleFg)),
+                pw.Container(
+                  padding: pw.EdgeInsets.symmetric(horizontal: 3 * mm, vertical: 0.8 * mm),
+                  decoration: pw.BoxDecoration(color: s.titleBg, borderRadius: pw.BorderRadius.circular(2 * mm)),
+                  child: pw.Text(_monthNames[mm2 - 1], style: pw.TextStyle(font: f.medium, fontSize: 6.5, color: s.titleFg)),
+                ),
                 pw.SizedBox(height: 1 * mm),
                 for (var r = 0; r < 6; r++) pw.Container(height: 6.5 * mm, alignment: pw.Alignment.bottomCenter, child: _rule()),
               ])],
@@ -201,7 +205,7 @@ extension PlannerPagesExt on AgendaBuilder {
             padding: pw.EdgeInsets.symmetric(horizontal: 8 * mm, vertical: 3 * mm),
             decoration: pw.BoxDecoration(color: PdfColor(1, 1, 1, 0.85), borderRadius: pw.BorderRadius.circular(5 * mm)),
             child: pw.Column(children: [
-              pw.Text(_monthNames[m - 1], style: pw.TextStyle(font: f.display, fontSize: 24, color: s.titleFg)),
+              pw.Text(_monthNames[m - 1], style: pw.TextStyle(font: f.title, fontSize: 24 * f.scriptScale, color: s.titleFg)),
               pw.Text('$y', style: pw.TextStyle(font: f.medium, fontSize: 9, color: s.titleFg)),
             ]),
           ),

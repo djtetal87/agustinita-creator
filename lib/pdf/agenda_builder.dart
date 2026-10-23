@@ -301,17 +301,50 @@ class AgendaBuilder {
 
   // ---------- Contenido de cada tipo de página ----------
 
-  pw.Widget _title(String t) => pw.Center(
-        child: pw.Container(
-          padding: pw.EdgeInsets.symmetric(horizontal: 6 * mm, vertical: 1.6 * mm),
-          decoration: pw.BoxDecoration(
-            color: s.titleBg,
-            borderRadius: pw.BorderRadius.circular(4 * mm),
-          ),
-          child: pw.Text(t,
-              style: pw.TextStyle(font: f.title, fontSize: 10, color: s.titleFg)),
-        ),
-      );
+  /// Título de página: "Primera" en Poppins Bold + "resto" en cursiva.
+  /// Con "|" se fuerza el corte ("Horario | de clases"). Sin píldora de fondo.
+  pw.Widget _title(String t, {double size = 11}) {
+    final color = s.titleFg;
+    final plain = pw.TextStyle(font: f.bold, fontSize: size, color: color);
+    final script = pw.TextStyle(font: f.title, fontSize: size * f.scriptScale, color: color);
+    pw.Widget w;
+    switch (f.titleStyle) {
+      case TitleStyle.plain:
+        w = pw.Text(t.replaceAll('|', ' ').replaceAll('  ', ' '), style: plain);
+        break;
+      case TitleStyle.script:
+        w = pw.Text(t.replaceAll('|', ' ').replaceAll('  ', ' '), style: script);
+        break;
+      case TitleStyle.dual:
+        String a, b;
+        if (t.contains('|')) {
+          final i = t.indexOf('|');
+          a = t.substring(0, i).trim();
+          b = t.substring(i + 1).trim();
+        } else {
+          final parts = t.trim().split(RegExp(r'\s+'));
+          if (parts.length == 1) {
+            a = '';
+            b = parts.first;
+          } else {
+            a = parts.first;
+            b = parts.sublist(1).join(' ');
+          }
+        }
+        w = pw.Row(
+          mainAxisSize: pw.MainAxisSize.min,
+          crossAxisAlignment: pw.CrossAxisAlignment.baseline,
+          textBaseline: pw.TextBaseline.alphabetic,
+          children: [
+            if (a.isNotEmpty) pw.Text(a, style: plain),
+            if (a.isNotEmpty) pw.SizedBox(width: 1.5 * mm),
+            pw.Text(b, style: script),
+          ],
+        );
+        break;
+    }
+    return pw.Center(child: pw.Padding(padding: pw.EdgeInsets.only(bottom: 1 * mm), child: w));
+  }
 
   pw.Widget _pageNumber(int n) => pw.Align(
         alignment: pw.Alignment.bottomCenter,
@@ -543,7 +576,7 @@ class AgendaBuilder {
               if (job.phrase.isNotEmpty) ...[
                 pw.SizedBox(height: 2 * mm),
                 pw.Text(job.phrase, textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(font: f.medium, fontSize: 7.5, color: s.titleFg)),
+                    style: pw.TextStyle(font: f.title, fontSize: 7.5 * f.scriptScale, color: s.titleFg)),
               ],
               pw.SizedBox(height: 3 * mm),
               pw.Text('Agustinita Papelería', style: pw.TextStyle(font: f.regular, fontSize: 5.5, color: PdfColors.grey600)),
@@ -747,7 +780,7 @@ class AgendaBuilder {
                       if (job.phrase.isNotEmpty) ...[
                         pw.SizedBox(height: 1.5 * mm),
                         pw.Text(job.phrase, textAlign: pw.TextAlign.center,
-                            style: pw.TextStyle(font: f.medium, fontSize: 9, color: s.titleFg)),
+                            style: pw.TextStyle(font: f.title, fontSize: 9 * f.scriptScale, color: s.titleFg)),
                       ],
                     ]),
                   ),

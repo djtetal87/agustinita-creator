@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AppSettings {
   static const _kFalKey = 'fal_key';
   static const _kFalModel = 'fal_model';
+  static const _kScript = 'title_script';
+  static const _kTitleStyle = 'title_style';
 
   static const falModels = <String, String>{
     'fal-ai/flux-pro/v1.1': 'Flux Pro 1.1 — mejor calidad, ~4 ¢',
@@ -12,13 +14,17 @@ class AppSettings {
 
   String falKey;
   String falModel;
-  AppSettings({required this.falKey, required this.falModel});
+  String titleScript; // stylescript · marck · parisienne · sacramento · allura
+  String titleStyle; // dual · script · plain
+  AppSettings({required this.falKey, required this.falModel, this.titleScript = 'stylescript', this.titleStyle = 'dual'});
 
   static Future<AppSettings> load() async {
     final p = await SharedPreferences.getInstance();
     return AppSettings(
       falKey: p.getString(_kFalKey) ?? '',
       falModel: p.getString(_kFalModel) ?? 'fal-ai/flux-pro/v1.1',
+      titleScript: p.getString(_kScript) ?? 'stylescript',
+      titleStyle: p.getString(_kTitleStyle) ?? 'dual',
     );
   }
 
@@ -26,6 +32,8 @@ class AppSettings {
     final p = await SharedPreferences.getInstance();
     await p.setString(_kFalKey, falKey.trim());
     await p.setString(_kFalModel, falModel);
+    await p.setString(_kScript, titleScript);
+    await p.setString(_kTitleStyle, titleStyle);
   }
 
   bool get isConfigured => falKey.trim().isNotEmpty;

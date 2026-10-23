@@ -1,7 +1,7 @@
 name: agustinita_creator
 description: Agustinita Creator — diseño de agendas y post-its personalizados con IA (Agustinita Papelería).
 publish_to: "none"
-version: 0.9.0+13
+version: 0.10.0+14
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -32,8 +32,12 @@ flutter:
     - assets/fonts/Poppins-Regular.ttf
     - assets/fonts/Poppins-Medium.ttf
     - assets/fonts/Poppins-Bold.ttf
-    - assets/fonts/Pacifico-Regular.ttf
     - assets/fonts/LilitaOne-Regular.ttf
+    - assets/fonts/StyleScript-Regular.ttf
+    - assets/fonts/MarckScript-Regular.ttf
+    - assets/fonts/Parisienne-Regular.ttf
+    - assets/fonts/Sacramento-Regular.ttf
+    - assets/fonts/Allura-Regular.ttf
   fonts:
     - family: Poppins
       fonts:

@@ -27,8 +27,10 @@ class _PostitScreenState extends State<PostitScreen> {
   String _styleId = 'kawaii';
   final _conceptC = TextEditingController();
   final _extraC = TextEditingController();
+  final _colorsC = TextEditingController();
   String get _concept => _conceptC.text;
   String get _extra => _extraC.text;
+  String get _colors => _colorsC.text;
   String _title = '';
   PostitContent _content = PostitContent.ruled;
   int _sheets = 1;
@@ -59,7 +61,7 @@ class _PostitScreenState extends State<PostitScreen> {
     try {
       final ai = FalService(apiKey: widget.settings.falKey, textModel: widget.settings.falModel);
       final prompt = Prompts.postitFrame(
-        style: _style, concept: _concept, extra: _extra, horizontal: p.w > p.h);
+        style: _style, concept: _concept, extra: _extra, colors: _colors, horizontal: p.w > p.h);
       final img = await ai.textToImage(prompt, width: int.parse(p.aiWidth), height: int.parse(p.aiHeight));
       setState(() => _frame = img);
     } catch (e) {
@@ -76,7 +78,7 @@ class _PostitScreenState extends State<PostitScreen> {
     }
     setState(() => _busyExport = true);
     try {
-      final fonts = await PdfFonts.load();
+      final fonts = await PdfFonts.load(script: widget.settings.titleScript, titleStyle: TitleStyle.values.byName(widget.settings.titleStyle));
       final job = PostitJob(
         spec: p, style: _style, title: _title.trim(), content: _content, frameArt: _frame!, sheets: _sheets);
       final bytes = await PostitBuilder(job, fonts).build();
@@ -103,7 +105,8 @@ class _PostitScreenState extends State<PostitScreen> {
         StyleChips(selected: _styleId, onChanged: (v) => setState(() => _styleId = v)),
         const SizedBox(height: 16),
         Field('Concepto', 'gatitos · cocina · plantas · profesora…', (_) {}, icon: Icons.lightbulb_outline, controller: _conceptC),
-        Field('Indicaciones extra (opcional)', 'más flores, colores menta…', (_) {}, maxLines: 2, controller: _extraC),
+        Field('Colores', 'rosado y beige · verde salvia y crema', (_) {}, icon: Icons.palette_outlined, controller: _colorsC),
+        Field('Indicaciones extra (opcional)', 'más flores, sin corazones…', (_) {}, maxLines: 2, controller: _extraC),
         const SectionTitle('Título del bloque'),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final t in titlePresets)

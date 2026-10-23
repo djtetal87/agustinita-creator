@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_settings.dart';
+import '../pdf/fonts.dart' show scriptFonts;
 
 class SettingsScreen extends StatefulWidget {
   final AppSettings settings;
@@ -14,12 +15,16 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late final _key = TextEditingController(text: widget.settings.falKey);
   late String _model = widget.settings.falModel;
+  late String _script = widget.settings.titleScript;
+  late String _tstyle = widget.settings.titleStyle;
   bool _show = false;
 
   Future<void> _save() async {
     widget.settings
       ..falKey = _key.text
-      ..falModel = _model;
+      ..falModel = _model
+      ..titleScript = _script
+      ..titleStyle = _tstyle;
     await widget.settings.save();
     widget.onSaved();
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado')));
@@ -57,6 +62,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 8),
         Text('Las conversiones de foto a personaje y las portadas con personaje usan Flux Kontext (~4 ¢ cada una).',
             style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 20),
+        Text('Títulos', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: _tstyle,
+          decoration: const InputDecoration(labelText: 'Estilo de título', border: OutlineInputBorder()),
+          items: const [
+            DropdownMenuItem(value: 'dual', child: Text('Doble fuente (negrita + cursiva)')),
+            DropdownMenuItem(value: 'script', child: Text('Todo en cursiva')),
+            DropdownMenuItem(value: 'plain', child: Text('Todo en negrita')),
+          ],
+          onChanged: (v) => setState(() => _tstyle = v ?? _tstyle),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _script,
+          decoration: const InputDecoration(labelText: 'Fuente cursiva', border: OutlineInputBorder()),
+          items: [for (final e in scriptFonts.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+          onChanged: (v) => setState(() => _script = v ?? _script),
+        ),
         const SizedBox(height: 20),
         FilledButton(onPressed: _save, child: const Text('Guardar')),
         const SizedBox(height: 32),

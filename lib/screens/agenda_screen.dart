@@ -31,6 +31,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   final _extraC = TextEditingController();
   final _interiorExtraC = TextEditingController();
   final _customPagesC = TextEditingController();
+  final _colorsC = TextEditingController();
+  String get _colors => _colorsC.text;
   String get _name => _nameC.text;
   String get _phrase => _phraseC.text;
   String get _concept => _conceptC.text;
@@ -110,7 +112,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     setState(() => _busyCover = true);
     try {
       final prompt = Prompts.agendaCover(
-          style: _style, concept: _concept, extra: _extra, hasCharacter: _character != null);
+          style: _style, concept: _concept, extra: _extra, colors: _colors, hasCharacter: _character != null);
       final img = _character != null
           ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
           : await _ai.textToImage(prompt, width: AgendaSpec.byId(_sizeId).aiWidth, height: AgendaSpec.byId(_sizeId).aiHeight);
@@ -141,10 +143,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
       if ((_coverUploaded || _styleId == 'referencia') && _cover != null) {
         // interior basado en la portada que subió el usuario
         img = await _ai.imageToImage(
-            Prompts.interiorFromCover(concept: _concept, extra: extra), _cover!, aspectRatio: '2:3');
+            Prompts.interiorFromCover(concept: _concept, extra: extra, colors: _colors), _cover!, aspectRatio: '2:3');
       } else {
         final prompt = Prompts.agendaInteriorFrame(
-            style: _style, concept: _concept, extra: extra, hasCharacter: _character != null);
+            style: _style, concept: _concept, extra: extra, colors: _colors, hasCharacter: _character != null);
         img = _character != null
             ? await _ai.imageToImage(prompt, _character!, aspectRatio: '2:3')
             : await _ai.textToImage(prompt, width: AgendaSpec.byId(_sizeId).aiWidth, height: AgendaSpec.byId(_sizeId).aiHeight);
@@ -164,7 +166,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     setState(() => _busySeparator = true);
     try {
       final ref = (_coverUploaded || _styleId == 'referencia') ? _cover : _character;
-      final prompt = Prompts.monthDivider(style: _style, concept: _concept, extra: _extra, fromCover: ref != null);
+      final prompt = Prompts.monthDivider(style: _style, concept: _concept, extra: _extra, colors: _colors, fromCover: ref != null);
       final spec = AgendaSpec.byId(_sizeId);
       final img = ref != null
           ? await _ai.imageToImage(prompt, ref, aspectRatio: '2:3')
@@ -179,7 +181,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
 
   Future<Uint8List> _genOneSeparator(String hint) async {
     final ref = (_coverUploaded || _styleId == 'referencia') ? _cover : _character;
-    final prompt = Prompts.monthDivider(style: _style, concept: _concept, extra: _extra, fromCover: ref != null, seasonHint: hint);
+    final prompt = Prompts.monthDivider(style: _style, concept: _concept, extra: _extra, colors: _colors, fromCover: ref != null, seasonHint: hint);
     final spec = AgendaSpec.byId(_sizeId);
     return ref != null
         ? await _ai.imageToImage(prompt, ref, aspectRatio: '2:3')
@@ -223,8 +225,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Future<void> _preview() async {
     setState(() => _busyPreview = true);
     try {
-      final job = _job(await PdfFonts.load());
-      final b = AgendaBuilder(job, await PdfFonts.load());
+      final job = _job(await PdfFonts.load(script: widget.settings.titleScript, titleStyle: TitleStyle.values.byName(widget.settings.titleStyle)));
+      final b = AgendaBuilder(job, await PdfFonts.load(script: widget.settings.titleScript, titleStyle: TitleStyle.values.byName(widget.settings.titleStyle)));
       final pdf = await b.buildInterior();
       final total = _singlePages ? (job.plannerPages?.length ?? 0) : ((job.plannerPages?.length ?? 0) / 2).ceil();
       final want = <int>{0, 1, 2, 3, total ~/ 2, (total ~/ 2) + 1, total - 2, total - 1}
@@ -326,7 +328,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   Future<void> _export() async {
     setState(() => _busyExport = true);
     try {
-      final fonts = await PdfFonts.load();
+      final fonts = await PdfFonts.load(script: widget.settings.titleScript, titleStyle: TitleStyle.values.byName(widget.settings.titleStyle));
       final job = _job(fonts);
       final b = AgendaBuilder(job, fonts);
       var slug = _name.trim().replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
@@ -391,7 +393,42 @@ class _AgendaScreenState extends State<AgendaScreen> {
         const SizedBox(height: 16),
         Field('Concepto', 'romántica · para profesora · para enfermero · amante de los gatos',
             (_) {}, icon: Icons.lightbulb_outline, controller: _conceptC),
-        Field('Indicaciones extra (opcional)', 'fondo celeste, sin corazones…', (_) {}, maxLines: 2, controller: _extraC),
+        Field('Colores', 'rosado, beige, dorado suave · verde salvia y crema', (_) {}, icon: Icons.palette_outlined, controller: _colorsC),
+        Text('Si lo llenas, la IA usa solo esos colores (manda sobre la paleta del estilo).', style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
+        Field('Indicaciones extra (opcional)', 'sin corazones, más flores…', (_) {}, maxLines: 2, controller: _extraC),
+        const SectionTitle('Títulos'),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Título a doble fuente'),
+          subtitle: const Text('Primera palabra en negrita + resto en cursiva ("Fechas importantes"). Usa "|" en páginas extra para elegir el corte.'),
+          value: widget.settings.titleStyle == 'dual',
+          onChanged: (v) => setState(() { widget.settings.titleStyle = v ? 'dual' : 'script'; widget.settings.save(); }),
+        ),
+        if (widget.settings.titleStyle != 'dual')
+          Row(children: [
+            const Text('Sin doble fuente:'),
+            const SizedBox(width: 8),
+            DropdownButton<String>(
+              value: widget.settings.titleStyle,
+              items: const [
+                DropdownMenuItem(value: 'script', child: Text('Todo en cursiva')),
+                DropdownMenuItem(value: 'plain', child: Text('Todo en negrita')),
+              ],
+              onChanged: (v) => setState(() { widget.settings.titleStyle = v ?? 'script'; widget.settings.save(); }),
+            ),
+          ]),
+        Text('Fuente cursiva', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final e in scriptFonts.entries)
+            ChoiceChip(
+              label: Text(e.value),
+              selected: widget.settings.titleScript == e.key,
+              onSelected: (_) => setState(() { widget.settings.titleScript = e.key; widget.settings.save(); }),
+            ),
+        ]),
+        const SizedBox(height: 8),
         const SectionTitle('Foto para convertir en personaje (opcional)'),
         Row(children: [
           OutlinedButton.icon(

@@ -111,7 +111,7 @@ class PostitBuilder {
                   borderRadius: pw.BorderRadius.circular(4 * mm),
                 ),
                 child: pw.Text(job.title,
-                    style: pw.TextStyle(font: f.bold, fontSize: p.w < 80 ? 9 : 12, color: s.titleFg)),
+                    style: pw.TextStyle(font: f.title, fontSize: (p.w < 80 ? 9 : 12) * f.scriptScale, color: s.titleFg)),
               ),
             ),
           ),

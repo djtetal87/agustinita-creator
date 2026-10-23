@@ -32,7 +32,7 @@ class StyleSpec {
     rule: PdfColor.fromInt(0xFF8E7CC3),
     accent: PdfColor.fromInt(0xFFE98BB6),
     aiPrompt:
-        'ilustración kawaii estilo Sanrio, línea limpia y gruesa, sombreado plano, colores pastel (rosa chicle, lila, celeste, crema), ojos grandes brillantes, corazones y estrellas pequeñas, muy tierno',
+        'ilustración kawaii estilo Sanrio, línea limpia y gruesa, sombreado plano, colores pastel (rosa chicle, lila suave, crema, durazno), ojos grandes brillantes, corazones y estrellas pequeñas, muy tierno',
   );
   static const pastel = StyleSpec(
     id: 'pastel',
@@ -43,7 +43,7 @@ class StyleSpec {
     rule: PdfColor.fromInt(0xFF8EA7C9),
     accent: PdfColor.fromInt(0xFF9EC3E8),
     aiPrompt:
-        'ilustración suave en acuarela digital, paleta pastel (celeste, menta, durazno, lavanda), bordes difuminados, nubes, flores pequeñas, sensación calmada y dulce',
+        'ilustración suave en acuarela digital, paleta pastel (rosa, beige, menta suave, durazno, lavanda), bordes difuminados, nubes, flores pequeñas, sensación calmada y dulce',
   );
   static const floral = StyleSpec(
     id: 'floral',

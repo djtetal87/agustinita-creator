@@ -11,17 +11,24 @@ class Prompts {
       ? ''
       : 'TEMA: $concept. Que el personaje y los adornos reflejen ese tema (objetos, ropa y símbolos propios de ese tema).';
 
+  /// Colores pedidos por el usuario: mandan sobre la paleta del estilo.
+  static String _colors(String colors) => colors.trim().isEmpty
+      ? ''
+      : 'COLORES OBLIGATORIOS: usa SOLO esta paleta: $colors. No uses otros colores dominantes (nada de celeste ni azul salvo que estén en la lista).';
+
   /// Marco de post-it: borde ilustrado y centro claro para escribir.
   static String postitFrame({
     required StyleSpec style,
     required String concept,
     required String extra,
+    String colors = '',
     required bool horizontal,
   }) {
     return '''
 Marco decorativo para una nota adhesiva (post-it) ${horizontal ? 'horizontal' : 'vertical'}.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
+${_colors(colors)}
 COMPOSICIÓN: el borde de la imagen está decorado (guirnaldas, flores, estrellas, cintas, pequeños detalles) y un personaje tierno asoma en la esquina inferior derecha. El CENTRO (70 % del área) es un espacio BLANCO completamente limpio y vacío para escribir a mano. Fondo blanco, estilo sticker de papelería, alta resolución, bordes nítidos.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
@@ -35,12 +42,14 @@ $_noText
     required StyleSpec style,
     required String concept,
     required String extra,
+    String colors = '',
     required bool hasCharacter,
   }) {
     return '''
 Portada ilustrada para una agenda personal, formato vertical.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
+${_colors(colors)}
 COMPOSICIÓN: ${hasCharacter ? 'el personaje protagonista (ver imagen de referencia) centrado en el tercio superior y medio, ' : 'un personaje tierno protagonista en el centro, '}rodeado de adornos del tema; la franja inferior (20 % de la altura) despejada, lisa y de color suave, sin personaje ni objetos, para colocar un nombre después. Patrón de fondo sutil, colores armoniosos, estilo papelería premium, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
@@ -54,13 +63,15 @@ $_noText
     required StyleSpec style,
     required String concept,
     required String extra,
+    String colors = '',
     required bool hasCharacter,
   }) {
     return '''
 Marco decorativo para las páginas interiores de una agenda, formato vertical.
 ESTÉTICA: ${style.aiPrompt}.
 ${_concept(concept)}
-COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave y en colores pastel claros, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra). SIN personajes ni personas: solo adornos. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío; los adornos no entran al centro. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
+${_colors(colors)}
+COMPOSICIÓN: decoración SOLO en los bordes y esquinas (orillas), suave${colors.trim().isEmpty ? ' y en colores pastel claros' : ''}, con elementos pequeños propios del TEMA repartidos por el borde (por ejemplo, para una enfermera: estetoscopio, corazón con cruz, gorrito, jeringa tierna; para una profesora: manzana, lápices, pizarra). SIN personajes ni personas: solo adornos. El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío; los adornos no entran al centro. La decoración debe ser más sutil que una portada: es una página para escribir. Fondo blanco, estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
 '''
@@ -94,6 +105,7 @@ $_noText
     required StyleSpec style,
     required String concept,
     required String extra,
+    String colors = '',
     required bool fromCover,
     String seasonHint = '',
   }) {
@@ -101,6 +113,7 @@ $_noText
 ${fromCover ? 'Usa la imagen adjunta como referencia de estilo, paleta, personaje y adornos, y genera una' : 'Genera una'} ilustración de página completa para los SEPARADORES de mes de una agenda, formato vertical.
 ${fromCover ? '' : 'ESTÉTICA: ${style.aiPrompt}.'}
 ${_concept(concept)}
+${_colors(colors)}
 ${seasonHint.isEmpty ? '' : 'ÉPOCA DEL AÑO: $seasonHint. Que el ambiente, los colores y los adornos reflejen esa época.'}
 COMPOSICIÓN: ${fromCover ? 'el mismo personaje de la referencia' : 'un personaje tierno protagonista'} grande en el centro, rodeado de adornos del tema; fondo con patrón suave; la franja inferior (25 % de la altura) lisa y de color suave, sin personaje ni objetos, para escribir el nombre del mes después. Estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
@@ -111,10 +124,11 @@ $_noText
 
   /// Marco interior a partir de una portada subida por el usuario (Kontext):
   /// copia estilo, paleta y adornos de esa portada.
-  static String interiorFromCover({required String concept, required String extra}) {
+  static String interiorFromCover({required String concept, required String extra, String colors = ''}) {
     return '''
 Usa la imagen adjunta (portada de una agenda) como referencia de estilo, paleta, personaje y adornos, y genera un MARCO para las páginas interiores de esa misma agenda, formato vertical.
 ${_concept(concept)}
+${_colors(colors)}
 COMPOSICIÓN: los mismos adornos y colores de la portada, pero SOLO en los bordes y esquinas (orillas), más suaves y pequeños; SIN el personaje ni personas (solo adornos). El CENTRO (80 % del área) es un espacio BLANCO completamente limpio y vacío. Fondo blanco, estilo papelería, alta resolución.
 ${extra.trim().isEmpty ? '' : 'INDICACIONES EXTRA: $extra'}
 $_noText
