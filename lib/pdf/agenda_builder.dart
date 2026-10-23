@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:vector_math/vector_math_64.dart' show Matrix4;
 
 import '../planner/holidays_cl.dart';
 import '../planner/sections.dart';
@@ -30,6 +31,11 @@ class AgendaJob {
   /// true: una página por hoja del PDF (A5 / media carta), para imprimir a
   /// doble cara directo. false: 2 páginas por hoja (A4 / carta) para cortar.
   final bool singlePages;
+  /// true: la ilustración cubre toda la página (sin marco redondeado); el
+  /// contenido queda en un área segura que respeta el anillado.
+  final bool fullBleedArt;
+  /// Sangrado en mm (0 = sin sangrado). Solo aplica con singlePages.
+  final double bleedMm;
 
   const AgendaJob({
     required this.name,
@@ -47,6 +53,8 @@ class AgendaJob {
     this.separatorArts = const {},
     this.overlay = const CharacterOverlay(),
     this.singlePages = false,
+    this.fullBleedArt = true,
+    this.bleedMm = 0,
   });
 }
 
@@ -86,18 +94,18 @@ class AgendaBuilder {
   // ---------- Interior: hojas carta horizontales, 2 páginas por cara ----------
 
   /// Una página lista para colocar en media hoja.
-  pw.Widget _pageWidget(int i, int number, bool ringLeft) {
+  pw.Widget _pageWidget(int i, int number, bool ringLeft, {double bleed = 0}) {
     final pp = job.plannerPages;
     if (pp != null) {
-      if (i >= pp.length) return _half(null, number, ringLeft);
+      if (i >= pp.length) return _half(null, number, ringLeft, bleed: bleed);
       final p = pp[i];
       final art = sectionDef(p.kind).artOnly;
-      return _half(_bodyWithNumber(plannerBody(p), number), number, ringLeft, artPage: art, month: p.month);
+      return _half(_bodyWithNumber(plannerBody(p), number), number, ringLeft, artPage: art, month: p.month, bleed: bleed);
     }
-    if (i >= job.pages.length) return _half(null, number, ringLeft);
+    if (i >= job.pages.length) return _half(null, number, ringLeft, bleed: bleed);
     final def = job.pages[i];
-    if (def.kind == PageKind.blank) return _half(null, number, ringLeft);
-    return _half(_pageBody(def, number), number, ringLeft, artPage: def.kind == PageKind.namePage);
+    if (def.kind == PageKind.blank) return _half(null, number, ringLeft, bleed: bleed);
+    return _half(_pageBody(def, number), number, ringLeft, artPage: def.kind == PageKind.namePage, bleed: bleed);
   }
 
   int get _pageCount => job.plannerPages?.length ?? job.pages.length;
@@ -123,13 +131,20 @@ class AgendaBuilder {
     final doc = pw.Document(title: 'Agenda ${job.name} — páginas sueltas');
     var n = _pageCount;
     if (n.isOdd) n++;
+    final b = job.bleedMm;
     for (var i = 0; i < n; i++) {
       final front = i.isEven; // página 1, 3, 5… = frente
       final ringLeft = front ? true : job.mirrorBack;
       doc.addPage(pw.Page(
-        pageFormat: PdfPageFormat(sp.halfW * mm, sp.sheetH * mm),
+        pageFormat: PdfPageFormat((sp.halfW + 2 * b) * mm, (sp.sheetH + 2 * b) * mm),
         margin: pw.EdgeInsets.zero,
-        build: (ctx) => _pageWidget(i, i + 1, ringLeft),
+        build: (ctx) => b == 0
+            ? _pageWidget(i, i + 1, ringLeft)
+            : pw.Stack(children: [
+                // la ilustración se extiende al sangrado; el contenido queda centrado
+                pw.Positioned(left: b * mm, top: b * mm, child: _pageWidget(i, i + 1, ringLeft, bleed: b)),
+                ..._cropMarks(b, b, sp.halfW, sp.sheetH),
+              ]),
       ));
     }
     return doc.save();
@@ -161,14 +176,67 @@ class AgendaBuilder {
   /// Media hoja: una página con su margen para los anillos.
   /// [body] null = página en blanco. [artPage] = fondo de arte completo
   /// (separadores, página del nombre) en vez del marco interior.
-  pw.Widget _half(pw.Widget? body, int number, bool ringLeft, {bool artPage = false, int month = 0}) {
-    final frameLeft = ringLeft
-        ? AgendaSpec.ringMargin
-        : sp.halfW - AgendaSpec.ringMargin - sp.frameW;
+  pw.Widget _half(pw.Widget? body, int number, bool ringLeft, {bool artPage = false, int month = 0, double bleed = 0}) {
     final isBlank = body == null;
     final bg = artPage ? (month > 0 ? _separatorFor(month) : _separator) : _interior;
     final ov = job.overlay;
     final showChar = !artPage && ov.enabled && _character != null;
+
+    if (job.fullBleedArt) {
+      // ---- Ilustración a página completa + área segura ----
+      final W = sp.halfW, H = sp.sheetH;
+      // área segura: 20 mm lado anillado, 10 mm lado exterior, 14 mm arriba/abajo
+      final ringSide = AgendaSpec.ringMargin + 5.0, outer = 10.0, top = 14.0, bottom = 14.0;
+      final left = ringLeft ? ringSide : outer;
+      final right = ringLeft ? outer : ringSide;
+      final charH = (H - top - bottom) * ov.sizePct;
+      return pw.SizedBox(
+        width: W * mm,
+        height: H * mm,
+        child: pw.Stack(children: [
+          // fondo: la imagen se extiende [bleed] mm hacia afuera por cada lado
+          if (bg != null && !isBlank)
+            pw.Positioned(
+              left: -bleed * mm, top: -bleed * mm,
+              child: pw.Transform(
+                // reverso: espejar para que los adornos no caigan en el anillado
+                transform: ringLeft
+                    ? Matrix4.identity()
+                    : (Matrix4.identity()..translate((W + 2 * bleed) * mm, 0.0)..scale(-1.0, 1.0)),
+                child: pw.SizedBox(
+                  width: (W + 2 * bleed) * mm, height: (H + 2 * bleed) * mm,
+                  child: pw.Image(bg, fit: pw.BoxFit.cover),
+                ),
+              ),
+            ),
+          if (showChar)
+            pw.Positioned(
+              left: ov.corner.endsWith('l') ? (left - 4) * mm : null,
+              right: ov.corner.endsWith('r') ? (right - 4) * mm : null,
+              top: ov.corner.startsWith('t') ? (top - 4) * mm : null,
+              bottom: ov.corner.startsWith('b') ? (bottom - 4) * mm : null,
+              child: pw.Opacity(
+                opacity: ov.opacity,
+                child: pw.Container(height: charH * mm, child: pw.Image(_character!, fit: pw.BoxFit.contain)),
+              ),
+            ),
+          if (!isBlank)
+            pw.Positioned(
+              left: left * mm, top: top * mm,
+              child: pw.SizedBox(
+                width: (W - left - right) * mm,
+                height: (H - top - bottom) * mm,
+                child: body,
+              ),
+            ),
+        ]),
+      );
+    }
+
+    // ---- Modo clásico: marco redondeado ----
+    final frameLeft = ringLeft
+        ? AgendaSpec.ringMargin
+        : sp.halfW - AgendaSpec.ringMargin - sp.frameW;
     final charH = sp.frameH * ov.sizePct;
     return pw.SizedBox(
       width: sp.halfW * mm,
@@ -207,7 +275,6 @@ class AgendaBuilder {
                     verticalRadius: AgendaSpec.frameRadius * mm,
                     child: pw.Image(bg, fit: pw.BoxFit.cover),
                   ),
-                // personaje semitransparente, DEBAJO del contenido
                 if (showChar)
                   pw.Positioned(
                     left: ov.corner.endsWith('l') ? 2 * mm : null,
@@ -220,7 +287,6 @@ class AgendaBuilder {
                     ),
                   ),
                 pw.Padding(
-                  // con marco ilustrado el contenido se aleja un poco más del borde
                   padding: artPage || bg == null
                       ? pw.EdgeInsets.all(AgendaSpec.innerPad * mm)
                       : pw.EdgeInsets.fromLTRB(12 * mm, 11 * mm, 12 * mm, 12 * mm),
@@ -633,12 +699,17 @@ class AgendaBuilder {
 
   Future<Uint8List> buildCover() async {
     final doc = pw.Document(title: 'Agenda ${job.name} — portada');
+    // Página suelta: la portada sale a tamaño de página (+ sangrado); si no,
+    // centrada en la hoja grande con marcas de corte.
+    final b = job.singlePages ? job.bleedMm : 0.0;
+    final pageW = job.singlePages ? sp.coverW + 2 * b : sp.coverSheetW;
+    final pageH = job.singlePages ? sp.coverH + 2 * b : sp.coverSheetH;
     doc.addPage(pw.Page(
-      pageFormat: PdfPageFormat(sp.coverSheetW * mm, sp.coverSheetH * mm),
+      pageFormat: PdfPageFormat(pageW * mm, pageH * mm),
       margin: pw.EdgeInsets.zero,
       build: (ctx) {
-        final left = (sp.coverSheetW - sp.coverW) / 2;
-        final top = (sp.coverSheetH - sp.coverH) / 2;
+        final left = (pageW - sp.coverW) / 2;
+        final top = (pageH - sp.coverH) / 2;
         return pw.Stack(children: [
           pw.Positioned(
             left: left * mm,
@@ -646,10 +717,16 @@ class AgendaBuilder {
             child: pw.Container(
               width: sp.coverW * mm,
               height: sp.coverH * mm,
-              decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400, width: 0.2)),
+              decoration: left > 0 ? pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400, width: 0.2)) : null,
               child: pw.Stack(fit: pw.StackFit.expand, children: [
                 if (job.coverArt != null)
-                  pw.Image(pw.MemoryImage(job.coverArt!), fit: pw.BoxFit.cover)
+                  pw.Positioned(
+                    left: -b * mm, top: -b * mm,
+                    child: pw.SizedBox(
+                      width: (sp.coverW + 2 * b) * mm, height: (sp.coverH + 2 * b) * mm,
+                      child: pw.Image(pw.MemoryImage(job.coverArt!), fit: pw.BoxFit.cover),
+                    ),
+                  )
                 else
                   pw.Container(color: s.titleBg),
                 // nombre y frase en una banda al borde inferior (no si la portada ya trae texto)
@@ -678,8 +755,8 @@ class AgendaBuilder {
               ]),
             ),
           ),
-          // marcas de corte
-          ..._cropMarks(left, top, sp.coverW, sp.coverH),
+          // marcas de corte (solo si hay margen alrededor)
+          if (left > 0) ..._cropMarks(left, top, sp.coverW, sp.coverH),
         ]);
       },
     ));

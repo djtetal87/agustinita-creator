@@ -58,6 +58,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   bool _busyPreview = false;
   bool _mirrorBack = true;
   bool _singlePages = true;
+  bool _fullBleedArt = true;
+  bool _bleed = false;
 
   Uint8List? _photo;
   Uint8List? _character;
@@ -281,6 +283,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
         spec: AgendaSpec.byId(_sizeId),
         overlay: CharacterOverlay(enabled: _ovEnabled, corner: _ovCorner, sizePct: _ovSize, opacity: _ovOpacity),
         singlePages: _singlePages,
+        fullBleedArt: _fullBleedArt,
+        bleedMm: _bleed ? 3 : 0,
       );
 
   /// Flujo completo: personaje (si hay foto) → portada → marco interior → separadores.
@@ -620,6 +624,21 @@ class _AgendaScreenState extends State<AgendaScreen> {
           value: _singlePages,
           onChanged: (v) => setState(() => _singlePages = v),
         ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Ilustración a página completa'),
+          subtitle: const Text('El fondo cubre toda la hoja; las pautas quedan en el área segura (20 mm lado anillado, 10 mm exterior). Apágalo para el marco redondeado clásico.'),
+          value: _fullBleedArt,
+          onChanged: (v) => setState(() => _fullBleedArt = v),
+        ),
+        if (_singlePages)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Agregar sangrado 3 mm + marcas de corte'),
+            subtitle: const Text('Apagado: PDF A5 exacto para hoja A5 lista. Enciéndelo si imprimes en hoja más grande y recortas.'),
+            value: _bleed,
+            onChanged: (v) => setState(() => _bleed = v),
+          ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('Anillos al lado contrario en el reverso'),
