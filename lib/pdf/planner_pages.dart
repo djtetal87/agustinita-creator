@@ -7,6 +7,22 @@ const _monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 const _dowShort = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const _dowLong = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+/// Efemérides típicas de planificación escolar en Chile (fechas fijas), por mes.
+const _ephemeridesCl = <List<String>>[
+  ['1 Año Nuevo'],
+  ['Vacaciones de verano'],
+  ['8 Día Internacional de la Mujer', '22 Día Mundial del Agua', '27 Día del Teatro'],
+  ['2 Día del Libro Infantil', '7 Día de la Salud', '22 Día de la Tierra', '23 Día del Libro', '29 Día de la Danza'],
+  ['1 Día del Trabajo', '2.ª semana: Semana de la Educación Artística', '11 Día del Alumno', '15 Día de la Familia', '21 Día de las Glorias Navales', 'Mes del Mar'],
+  ['5 Día del Medio Ambiente', '7 Día del Asistente de la Educación', '21 Día de los Pueblos Originarios', '26 Día del Carabinero'],
+  ['16 Día de la Virgen del Carmen', '2.ª semana: vacaciones de invierno'],
+  ['15 Asunción de la Virgen', "20 Natalicio de O'Higgins", '2.º domingo: Día del Niño/a'],
+  ['18 Fiestas Patrias', '19 Glorias del Ejército', 'Mes de la Patria'],
+  ['1 Día del Adulto Mayor', '12 Encuentro de Dos Mundos', '16 Día del Profesor/a', '31 Día de las Iglesias Evangélicas'],
+  ['1 Todos los Santos', '20 Día de los Derechos del Niño', '25 Día de la No Violencia contra la Mujer'],
+  ['3 Día de la Discapacidad', '8 Inmaculada Concepción', '10 Derechos Humanos', '25 Navidad'],
+];
+
 String _d2(int n) => n.toString().padLeft(2, '0');
 
 extension PlannerPagesExt on AgendaBuilder {
@@ -474,6 +490,234 @@ extension PlannerPagesExt on AgendaBuilder {
           _fillTable(['Alumno/a', 'Ev. 1', 'Ev. 2', 'Ev. 3', 'Ev. 4', 'Ev. 5', 'Prom.'], flex: [2.4, 0.6, 0.6, 0.6, 0.6, 0.6, 0.7], rowMm: 7),
         ]);
 
+      // ---------- plantilla Profesor/a (Chile) ----------
+      case SectionKind.teacherInfo:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Datos del docente'),
+          pw.SizedBox(height: 2 * mm),
+          for (final l in ['Nombre:', 'Teléfono y correo:', 'Establecimiento:', 'Cursos y niveles a cargo:', 'Asignaturas a cargo:', 'Profesor/a jefe de:', 'Horas de contrato:'])
+            _labelLine(l),
+        ]);
+
+      case SectionKind.schoolCalendar:
+        final hsCal = chileHolidays(y);
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Calendario escolar $y'),
+          pw.SizedBox(height: 1 * mm),
+          for (final l in ['Inicio del año escolar:', 'Término del 1.er semestre:', 'Vacaciones de invierno (desde / hasta):', 'Inicio del 2.º semestre:', 'Término del año escolar:'])
+            _inlineLine(l),
+          _subtitle('Feriados $y'),
+          for (final h in hsCal)
+            pw.Container(
+              padding: pw.EdgeInsets.symmetric(vertical: 0.7 * mm),
+              decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: s.rule, width: 0.2))),
+              child: pw.Row(children: [
+                pw.Container(width: 22 * mm, child: pw.Text('${_dowLong[h.date.weekday - 1].substring(0, 3)} ${_d2(h.date.day)} ${_monthNames[h.date.month - 1].substring(0, 3)}',
+                    style: pw.TextStyle(font: f.bold, fontSize: 6, color: s.titleFg))),
+                pw.Expanded(child: pw.Text(h.name, style: pw.TextStyle(font: f.regular, fontSize: 6, color: PdfColors.grey800))),
+              ]),
+            ),
+          _subtitle('Interferiados y días sin clases'),
+          _ruled(7, count: 3),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Verificar fechas oficiales en el calendario escolar regional del MINEDUC.', style: _small),
+        ]);
+
+      case SectionKind.ephemerides:
+        final from = p.index == 0 ? 1 : 7;
+        return pw.Column(children: [
+          _title('Efemérides chilenas'),
+          pw.SizedBox(height: 2 * mm),
+          pw.Expanded(child: pw.GridView(
+            crossAxisCount: 2, childAspectRatio: 0.95, crossAxisSpacing: 3 * mm, mainAxisSpacing: 2 * mm,
+            children: [for (var mm2 = from; mm2 < from + 6; mm2++)
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Container(
+                  padding: pw.EdgeInsets.symmetric(horizontal: 3 * mm, vertical: 0.8 * mm),
+                  decoration: pw.BoxDecoration(color: s.titleBg, borderRadius: pw.BorderRadius.circular(2 * mm)),
+                  child: pw.Text(_monthNames[mm2 - 1], style: pw.TextStyle(font: f.medium, fontSize: 6.5, color: s.titleFg)),
+                ),
+                pw.SizedBox(height: 0.8 * mm),
+                for (final e in _ephemeridesCl[mm2 - 1])
+                  pw.Padding(padding: pw.EdgeInsets.only(bottom: 0.5 * mm), child: pw.Text(e, style: _small)),
+                for (var r = 0; r < 2; r++) pw.Container(height: 5 * mm, alignment: pw.Alignment.bottomCenter, child: _rule()),
+              ])],
+          )),
+        ]);
+
+      case SectionKind.unitPlan:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Unidades · ${_monthNames[m - 1]}'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ______________   Asignatura: ______________', style: _lbl),
+          pw.SizedBox(height: 2 * mm),
+          _fillTable(['Unidad', 'Objetivo de aprendizaje (OA)', 'Semanas', 'Evaluación'], flex: [1.2, 2.4, 0.8, 1.2], rowMm: 14),
+        ]);
+
+      case SectionKind.attendance:
+        final daysA = DateTime(y, m + 1, 0).day;
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Asistencia · ${_monthNames[m - 1]}'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ______________   Asignatura: ______________', style: _lbl),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('A ausente · I injustificada · T atraso', style: _small),
+          pw.SizedBox(height: 2 * mm),
+          pw.Expanded(child: pw.LayoutBuilder(builder: (ctx, c) {
+            final rows = (((c?.maxHeight ?? 0) / mm - 6) / 7).floor().clamp(3, 45);
+            const numW = 6.0, nameW = 26.0;
+            return pw.Column(children: [
+              pw.Row(children: [
+                pw.Container(width: numW * mm, child: pw.Text('N.°', style: _hdr)),
+                pw.Container(width: nameW * mm, child: pw.Text('Alumno/a', style: _hdr)),
+                for (var d = 1; d <= daysA; d++)
+                  pw.Expanded(child: pw.Center(child: pw.Text('$d', style: pw.TextStyle(font: f.regular, fontSize: 3.6, color: PdfColors.grey700)))),
+              ]),
+              for (var r = 0; r < rows; r++)
+                pw.Container(
+                  height: 7 * mm,
+                  decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: s.rule, width: 0.3))),
+                  child: pw.Row(children: [
+                    pw.Container(width: numW * mm, alignment: pw.Alignment.centerLeft, child: pw.Text('${r + 1}', style: _small)),
+                    pw.Container(width: nameW * mm),
+                    for (var d = 1; d <= daysA; d++)
+                      pw.Expanded(child: pw.Container(decoration: pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(color: s.rule, width: 0.15))))),
+                  ]),
+                ),
+            ]);
+          })),
+        ]);
+
+      case SectionKind.subjectPlanner:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Planificador por asignatura'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ______________   Asignatura: ______________', style: _lbl),
+          pw.SizedBox(height: 2 * mm),
+          _fillTable(['Fecha', 'Contenido u OA', 'Actividad', 'Recursos'], flex: [0.7, 2, 2, 1.2], rowMm: 12),
+        ]);
+
+      case SectionKind.studentList:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Lista de alumnos'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ______________   Año: $y', style: _lbl),
+          pw.SizedBox(height: 2 * mm),
+          _numberedTable(['N.°', 'Nombre', 'Apoderado', 'Teléfono', 'Observaciones'], [0.4, 2, 1.6, 1.1, 1.6], rowMm: 7.5),
+        ]);
+
+      case SectionKind.studentCards:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Fichas de seguimiento'),
+          pw.SizedBox(height: 2 * mm),
+          pw.Expanded(child: pw.Column(children: [
+            for (var k = 0; k < 2; k++)
+              pw.Expanded(child: pw.Container(
+                margin: pw.EdgeInsets.only(bottom: k == 0 ? 2.5 * mm : 0),
+                padding: pw.EdgeInsets.all(2 * mm),
+                decoration: pw.BoxDecoration(border: pw.Border.all(color: s.frame, width: 0.5), borderRadius: pw.BorderRadius.circular(2 * mm)),
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  pw.Row(children: [
+                    pw.Expanded(flex: 3, child: _inlineLine('Alumno/a:')),
+                    pw.SizedBox(width: 3 * mm),
+                    pw.Expanded(flex: 2, child: _inlineLine('Curso:')),
+                  ]),
+                  _inlineLine('Fecha:'),
+                  for (final l in ['Fortalezas', 'Dificultades', 'Acuerdos'])
+                    pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                      pw.Text(l, style: _hdr),
+                      _ruled(5.5),
+                    ])),
+                ]),
+              )),
+          ])),
+        ]);
+
+      case SectionKind.gradesCl:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Registro de calificaciones'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ________   Asignatura: ____________   Semestre: ____', style: _lbl),
+          pw.SizedBox(height: 2 * mm),
+          _numberedTable(['N.°', 'Nombre', 'N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'Promedio'], [0.4, 2.2, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.8], rowMm: 7),
+          pw.SizedBox(height: 1.5 * mm),
+          pw.Text('Escala 1,0 a 7,0 · Nota mínima de aprobación 4,0 · 60 % de exigencia', style: _small),
+        ]);
+
+      case SectionKind.rubrics:
+        const levels = ['Destacado 4', 'Logrado 3', 'En desarrollo 2', 'Inicial 1'];
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Rúbrica de evaluación'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ________   Actividad / instrumento: ______________', style: _lbl),
+          pw.SizedBox(height: 2 * mm),
+          _tableHeader(['Criterio', ...levels], flex: [1.4, 1, 1, 1, 1]),
+          for (var r = 0; r < 6; r++)
+            pw.Container(
+              height: 13 * mm,
+              decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: s.rule, width: 0.3))),
+              child: pw.Row(children: [
+                for (var i = 0; i < 5; i++)
+                  pw.Expanded(
+                    flex: i == 0 ? 14 : 10,
+                    child: pw.Container(decoration: i == 0 ? null : pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(color: s.rule, width: 0.2)))),
+                  ),
+              ]),
+            ),
+          _subtitle('Observaciones de desempeño'),
+          _ruled(7),
+        ]);
+
+      case SectionKind.parentMeetings:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Reunión de apoderados'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Row(children: [
+            pw.Expanded(flex: 2, child: _inlineLine('Fecha:')),
+            pw.SizedBox(width: 3 * mm),
+            pw.Expanded(flex: 2, child: _inlineLine('Curso:')),
+          ]),
+          _subtitle('Asistentes'),
+          for (var r = 1; r <= 5; r++)
+            pw.Container(
+              height: 6 * mm,
+              child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Container(width: 6 * mm, child: pw.Text('$r.', style: _small)),
+                pw.Expanded(child: _rule()),
+              ]),
+            ),
+          _subtitle('Temas tratados'),
+          _ruled(7),
+          _subtitle('Acuerdos'),
+          _checkRows(4, h: 7),
+        ]);
+
+      case SectionKind.staffMeetings:
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Consejos y reuniones'),
+          pw.SizedBox(height: 1 * mm),
+          _inlineLine('Fecha:'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Row(children: [
+            pw.Text('Tipo:  ', style: _lbl),
+            for (final t in ['Consejo de profesores', 'Departamento', 'UTP'])
+              pw.Padding(
+                padding: pw.EdgeInsets.only(right: 4 * mm),
+                child: pw.Row(children: [
+                  pw.Container(width: 3 * mm, height: 3 * mm, margin: pw.EdgeInsets.only(right: 1.2 * mm),
+                      decoration: pw.BoxDecoration(border: pw.Border.all(color: s.accent, width: 0.5), borderRadius: pw.BorderRadius.circular(0.6 * mm))),
+                  pw.Text(t, style: _lbl),
+                ]),
+              ),
+          ]),
+          _subtitle('Temas'),
+          _ruled(7, count: 5),
+          _subtitle('Acuerdos'),
+          _ruled(7, count: 5),
+          _subtitle('Directrices UTP'),
+          _ruled(7),
+        ]);
+
       case SectionKind.notes:
         return pw.Column(children: [_title('Notas y apuntes'), pw.SizedBox(height: 2 * mm), _ruled(8)]);
 
@@ -507,6 +751,42 @@ extension PlannerPagesExt on AgendaBuilder {
         return _pageBody(const PageDef(PageKind.namePage), 0, bare: true);
     }
   }
+
+  /// Línea con etiqueta a la izquierda y raya que llena el ancho.
+  pw.Widget _inlineLine(String label) => pw.Container(
+        height: 7 * mm,
+        child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+          pw.Text('$label ', style: _lbl),
+          pw.Expanded(child: _rule()),
+        ]),
+      );
+
+  /// Tabla que llena el espacio, con la primera columna numerada 1, 2, 3…
+  pw.Widget _numberedTable(List<String> cols, List<double> flex, {double rowMm = 7}) => pw.Expanded(
+        child: pw.LayoutBuilder(builder: (ctx, c) {
+          final n = (((c?.maxHeight ?? 0) / mm - 7) / rowMm).floor().clamp(1, 60);
+          return pw.Column(children: [
+            _tableHeader(cols, flex: flex),
+            for (var r = 0; r < n; r++)
+              pw.Container(
+                height: rowMm * mm,
+                decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: s.rule, width: 0.3))),
+                child: pw.Row(children: [
+                  for (var i = 0; i < cols.length; i++)
+                    pw.Expanded(
+                      flex: (flex[i] * 10).round(),
+                      child: pw.Container(
+                        alignment: pw.Alignment.centerLeft,
+                        padding: i == 0 ? pw.EdgeInsets.only(left: 1.5 * mm) : null,
+                        decoration: i == 0 ? null : pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(color: s.rule, width: 0.2))),
+                        child: i == 0 ? pw.Text('${r + 1}', style: _small) : null,
+                      ),
+                    ),
+                ]),
+              ),
+          ]);
+        }),
+      );
 
   pw.Widget _smallTable(List<String> cols, List<double> flex, int rows) => pw.Column(children: [
         _tableHeader(cols, flex: flex),

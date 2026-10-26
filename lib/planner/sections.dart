@@ -4,12 +4,17 @@ import '../specs.dart' show CustomLayout, CustomPage;
 
 enum SectionKind {
   owner, // Datos personales
+  teacherInfo, // Datos del docente
+  schoolCalendar, // Calendario escolar
+  ephemerides, // Efemérides chilenas
   yearCalendar, // Calendario anual (con feriados de Chile)
   holidaysList, // Lista de feriados del año
   birthdays, // Cumpleaños y fechas importantes
   yearGoals, // Objetivos del año
   monthDivider, // Separador de mes (arte completo + personaje)
   monthPlan, // Planificación mensual (grilla)
+  unitPlan, // Planificación de unidades
+  attendance, // Control de asistencia
   monthGoals, // Objetivos y metas del mes
   finance, // Ingresos, gastos, pagos pendientes, ahorros
   habits, // Hábitos, actividad física y autocuidado (grilla 31 días)
@@ -23,7 +28,14 @@ enum SectionKind {
   sessions, // Registro de sesiones / inasistencias / reagendamientos
   projects, // Seguimiento de tareas laborales y proyectos
   classes, // Horario de clases / cursos (profesora)
-  grades, // Registro de evaluaciones (profesora)
+  grades, // Registro de evaluaciones simple (profesora)
+  subjectPlanner, // Planificador por asignatura o curso
+  studentList, // Lista de alumnos
+  studentCards, // Fichas de seguimiento
+  gradesCl, // Registro de calificaciones (escala chilena)
+  rubrics, // Rúbricas e instrumentos de evaluación
+  parentMeetings, // Reuniones de apoderados
+  staffMeetings, // Consejos y reuniones de departamento
   notes, // Notas y apuntes (rayado)
   ideas, // Ideas y anotaciones libres (punteado)
   // páginas de la agenda infantil
@@ -47,12 +59,17 @@ class SectionDef {
 
 const sectionCatalog = <SectionDef>[
   SectionDef(SectionKind.owner, 'Datos personales', '"Esta agenda pertenece a…"', Placement.front, 1),
+  SectionDef(SectionKind.teacherInfo, 'Datos del docente', 'Contacto, establecimiento, niveles y asignaturas a cargo', Placement.front, 1),
   SectionDef(SectionKind.yearCalendar, 'Calendario anual', '12 meses con feriados de Chile marcados', Placement.front, 1),
   SectionDef(SectionKind.holidaysList, 'Lista de feriados', 'Feriados de Chile del año', Placement.front, 1),
+  SectionDef(SectionKind.schoolCalendar, 'Calendario escolar', 'Inicio y término del año escolar, vacaciones de invierno, feriados e interferiados', Placement.front, 1),
+  SectionDef(SectionKind.ephemerides, 'Efemérides chilenas', 'Fechas típicas de planificación escolar, por mes', Placement.front, 2),
   SectionDef(SectionKind.birthdays, 'Cumpleaños y fechas importantes', 'Lista por mes', Placement.front, 2),
   SectionDef(SectionKind.yearGoals, 'Objetivos del año', 'Metas anuales', Placement.front, 1),
   SectionDef(SectionKind.monthDivider, 'Separador de mes', 'Arte completo con el personaje y el nombre del mes', Placement.perMonth, 1, artOnly: true),
   SectionDef(SectionKind.monthPlan, 'Planificación mensual', 'Grilla del mes con notas', Placement.perMonth, 1),
+  SectionDef(SectionKind.unitPlan, 'Planificación de unidades', 'Unidad, objetivo de aprendizaje (OA), semanas y evaluación', Placement.perMonth, 1),
+  SectionDef(SectionKind.attendance, 'Control de asistencia', 'Alumnos por días del mes (A / I / T)', Placement.perMonth, 1),
   SectionDef(SectionKind.monthGoals, 'Objetivos y metas del mes', 'Metas, pasos y prioridades', Placement.perMonth, 1),
   SectionDef(SectionKind.finance, 'Control de finanzas', 'Ingresos, gastos, pagos pendientes y ahorros', Placement.perMonth, 1),
   SectionDef(SectionKind.habits, 'Hábitos y autocuidado', 'Grilla de 31 días: hábitos, actividad física, autocuidado', Placement.perMonth, 1),
@@ -66,7 +83,14 @@ const sectionCatalog = <SectionDef>[
   SectionDef(SectionKind.sessions, 'Registro de sesiones', 'Fecha, paciente, asistió / inasistencia / reagendado', Placement.back, 8),
   SectionDef(SectionKind.projects, 'Tareas laborales y proyectos', 'Proyecto, pasos, fecha límite, estado', Placement.back, 4),
   SectionDef(SectionKind.classes, 'Horario de clases y cursos', 'Horario semanal por curso (profesora)', Placement.back, 2),
-  SectionDef(SectionKind.grades, 'Registro de evaluaciones', 'Tabla curso / alumno / notas (profesora)', Placement.back, 6),
+  SectionDef(SectionKind.grades, 'Evaluaciones (simple)', 'Tabla simple curso / alumno / notas (profesora)', Placement.back, 6),
+  SectionDef(SectionKind.subjectPlanner, 'Planificador por asignatura o curso', 'Fecha, contenido u OA, actividad y recursos', Placement.back, 6),
+  SectionDef(SectionKind.studentList, 'Lista de alumnos', 'N.°, nombre, apoderado, teléfono y observaciones', Placement.back, 4),
+  SectionDef(SectionKind.studentCards, 'Fichas de seguimiento', '2 fichas por página: fortalezas, dificultades y acuerdos', Placement.back, 4),
+  SectionDef(SectionKind.gradesCl, 'Registro de calificaciones', 'Notas 1,0 a 7,0 con promedio (escala chilena, 60 % de exigencia)', Placement.back, 6),
+  SectionDef(SectionKind.rubrics, 'Rúbricas e instrumentos de evaluación', 'Criterios por 4 niveles de logro y observaciones', Placement.back, 3),
+  SectionDef(SectionKind.parentMeetings, 'Reuniones de apoderados', 'Fecha, curso, asistentes, temas y acuerdos', Placement.back, 4),
+  SectionDef(SectionKind.staffMeetings, 'Consejos y reuniones de departamento', 'Tipo, temas, acuerdos y directrices UTP', Placement.back, 4),
   SectionDef(SectionKind.notes, 'Notas y apuntes', 'Páginas rayadas', Placement.back, 8),
   SectionDef(SectionKind.ideas, 'Ideas y anotaciones libres', 'Páginas punteadas', Placement.back, 6),
   SectionDef(SectionKind.kidHandwriting, 'Mi caligrafía', 'Pauta de caligrafía (niños)', Placement.back, 10),
@@ -115,11 +139,17 @@ final plannerTemplates = <PlannerTemplate>[
         SectionKind.tasks, SectionKind.patients, SectionKind.sessions, SectionKind.projects, SectionKind.notes, SectionKind.ideas,
         SectionKind.namePage,
       ], off: [SectionKind.daily])),
-  PlannerTemplate('profesora', 'Profesora', () => _c([
-        SectionKind.owner, SectionKind.yearCalendar, SectionKind.holidaysList, SectionKind.birthdays, SectionKind.yearGoals,
-        SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.monthGoals, SectionKind.weekly, SectionKind.meetings, SectionKind.monthBalance,
-        SectionKind.classes, SectionKind.grades, SectionKind.tasks, SectionKind.projects, SectionKind.notes, SectionKind.ideas, SectionKind.namePage,
-      ], off: [SectionKind.finance, SectionKind.habits, SectionKind.schedule, SectionKind.daily])),
+  PlannerTemplate('profesor', 'Profesor/a (Chile)', () => _c([
+        SectionKind.teacherInfo, SectionKind.yearCalendar, SectionKind.schoolCalendar, SectionKind.holidaysList, SectionKind.ephemerides,
+        SectionKind.birthdays, SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.unitPlan, SectionKind.attendance,
+        SectionKind.weekly, SectionKind.classes, SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentCards,
+        SectionKind.gradesCl, SectionKind.rubrics, SectionKind.parentMeetings, SectionKind.staffMeetings,
+        SectionKind.tasks, SectionKind.notes, SectionKind.ideas, SectionKind.namePage,
+      ], off: [SectionKind.owner, SectionKind.grades, SectionKind.finance, SectionKind.habits, SectionKind.schedule, SectionKind.daily,
+               SectionKind.patients, SectionKind.sessions, SectionKind.monthGoals, SectionKind.meetings, SectionKind.monthBalance,
+               SectionKind.yearGoals, SectionKind.projects,
+               SectionKind.kidHandwriting, SectionKind.kidDrawWrite, SectionKind.kidFeelings, SectionKind.kidTherapyTasks,
+               SectionKind.kidHomework, SectionKind.kidSavings, SectionKind.kidAchievements, SectionKind.kidCreative])),
   PlannerTemplate('regalo', 'Para regalar (básica)', () => _c([
         SectionKind.owner, SectionKind.yearCalendar, SectionKind.birthdays,
         SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.monthGoals, SectionKind.finance, SectionKind.weekly,
@@ -134,7 +164,10 @@ final plannerTemplates = <PlannerTemplate>[
       off: [SectionKind.yearCalendar, SectionKind.holidaysList, SectionKind.birthdays, SectionKind.yearGoals, SectionKind.monthDivider,
             SectionKind.monthPlan, SectionKind.monthGoals, SectionKind.finance, SectionKind.habits, SectionKind.weekly, SectionKind.schedule,
             SectionKind.daily, SectionKind.meetings, SectionKind.monthBalance, SectionKind.tasks, SectionKind.patients, SectionKind.sessions,
-            SectionKind.projects, SectionKind.classes, SectionKind.grades, SectionKind.notes, SectionKind.ideas])),
+            SectionKind.projects, SectionKind.classes, SectionKind.grades, SectionKind.notes, SectionKind.ideas,
+            SectionKind.teacherInfo, SectionKind.schoolCalendar, SectionKind.ephemerides, SectionKind.unitPlan, SectionKind.attendance,
+            SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentCards, SectionKind.gradesCl, SectionKind.rubrics,
+            SectionKind.parentMeetings, SectionKind.staffMeetings])),
 ];
 
 /// Una página concreta a dibujar.
@@ -185,7 +218,7 @@ List<PlannerPage> buildPlannerPages({
   }
   final perMonth = of(Placement.perMonth);
   final perWeek = of(Placement.perWeek);
-  final monthOrder = [SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.monthGoals, SectionKind.finance, SectionKind.habits];
+  final monthOrder = [SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.unitPlan, SectionKind.attendance, SectionKind.monthGoals, SectionKind.finance, SectionKind.habits];
   final monthTail = [SectionKind.meetings, SectionKind.monthBalance];
   for (var m = monthsFrom; m < monthsFrom + monthsCount; m++) {
     final y = year + (m - 1) ~/ 12;
