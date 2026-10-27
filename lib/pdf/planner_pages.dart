@@ -454,32 +454,42 @@ extension PlannerPagesExt on AgendaBuilder {
         ]);
 
       case SectionKind.classes:
-        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          _title('Horario de clases'),
+        // Página girada 90°: se lee en horizontal girando la agenda.
+        return _landscape(pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Row(children: [
+            _title('Horario de clases'),
+            pw.Spacer(),
+            pw.Text('Curso / sala: ________________', style: _lbl),
+          ]),
           pw.SizedBox(height: 2 * mm),
           pw.Expanded(child: pw.LayoutBuilder(builder: (ctx, c) {
-            const blocks = 9;
+            const blocks = 10;
             final rowH = ((c?.maxHeight ?? 0) - 6 * mm) / blocks;
             return pw.Column(children: [
               pw.Row(children: [
-                pw.Container(width: 12 * mm),
+                pw.Container(width: 18 * mm, decoration: pw.BoxDecoration(color: s.titleBg), padding: pw.EdgeInsets.symmetric(vertical: 0.8 * mm),
+                    child: pw.Center(child: pw.Text('Hora', style: pw.TextStyle(font: f.bold, fontSize: 6, color: s.titleFg)))),
                 for (var d = 0; d < 5; d++)
                   pw.Expanded(child: pw.Container(decoration: pw.BoxDecoration(color: s.titleBg), padding: pw.EdgeInsets.symmetric(vertical: 0.8 * mm),
-                      child: pw.Center(child: pw.Text(_dowLong[d], style: pw.TextStyle(font: f.bold, fontSize: 5.5, color: s.titleFg))))),
+                      child: pw.Center(child: pw.Text(_dowLong[d], style: pw.TextStyle(font: f.bold, fontSize: 6, color: s.titleFg))))),
               ]),
               for (var i = 0; i < blocks; i++)
                 pw.Container(
                   height: rowH,
                   decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: s.rule, width: 0.3))),
                   child: pw.Row(children: [
-                    pw.Container(width: 12 * mm, alignment: pw.Alignment.centerLeft, child: pw.Text('Bloque ${i + 1}', style: _small)),
+                    pw.Container(width: 18 * mm, padding: pw.EdgeInsets.only(left: 1 * mm), alignment: pw.Alignment.centerLeft,
+                        child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                          pw.Text('Bloque ${i + 1}', style: pw.TextStyle(font: f.bold, fontSize: 5.5, color: s.titleFg)),
+                          pw.Text('___:___ a ___:___', style: _small),
+                        ])),
                     for (var d = 0; d < 5; d++)
                       pw.Expanded(child: pw.Container(decoration: pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(color: s.rule, width: 0.2))))),
                   ]),
                 ),
             ]);
           })),
-        ]);
+        ]));
 
       case SectionKind.grades:
         return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
@@ -604,6 +614,40 @@ extension PlannerPagesExt on AgendaBuilder {
           pw.Text('Curso: ______________   Año: $y', style: _lbl),
           pw.SizedBox(height: 2 * mm),
           _numberedTable(['N.°', 'Nombre', 'Apoderado', 'Teléfono', 'Observaciones'], [0.4, 2, 1.6, 1.1, 1.6], rowMm: 7.5),
+        ]);
+
+      case SectionKind.studentData:
+        const cols = ['N.°', 'Nombre completo', 'RUT', 'Fecha nac.', 'Apoderado/a', 'Teléfono'];
+        const fx = [0.45, 2.4, 1.1, 0.9, 1.7, 1.1];
+        return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _title('Datos de alumnos'),
+          pw.SizedBox(height: 1 * mm),
+          pw.Text('Curso: ______________   Profesor/a jefe: ______________   Año: $y', style: _lbl),
+          pw.SizedBox(height: 2 * mm),
+          pw.Expanded(child: pw.LayoutBuilder(builder: (ctx, c) {
+            const n = 45;
+            final rowH = ((c?.maxHeight ?? 0) - 6 * mm) / n;
+            return pw.Column(children: [
+              _tableHeader(cols, flex: fx),
+              for (var r = 0; r < n; r++)
+                pw.Container(
+                  height: rowH,
+                  color: r.isOdd ? s.titleBg : PdfColors.white,
+                  child: pw.Row(children: [
+                    for (var i = 0; i < cols.length; i++)
+                      pw.Expanded(
+                        flex: (fx[i] * 10).round(),
+                        child: pw.Container(
+                          alignment: pw.Alignment.centerLeft,
+                          padding: i == 0 ? pw.EdgeInsets.only(left: 1.5 * mm) : null,
+                          decoration: i == 0 ? null : pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(color: s.rule, width: 0.2))),
+                          child: i == 0 ? pw.Text('${r + 1}', style: pw.TextStyle(font: f.regular, fontSize: (rowH / mm * 1.35).clamp(4.0, 6.0), color: s.titleFg)) : null,
+                        ),
+                      ),
+                  ]),
+                ),
+            ]);
+          })),
         ]);
 
       case SectionKind.studentCards:
@@ -762,6 +806,19 @@ extension PlannerPagesExt on AgendaBuilder {
       );
 
   /// Tabla que llena el espacio, con la primera columna numerada 1, 2, 3…
+  /// Contenido girado 90° (horizontal): se lee girando la agenda.
+  pw.Widget _landscape(pw.Widget child) => pw.LayoutBuilder(builder: (ctx, c) {
+        final w = c?.maxWidth ?? 0, h = c?.maxHeight ?? 0;
+        return pw.SizedBox(
+          width: w, height: h,
+          child: pw.Transform.rotateBox(
+            angle: 1.5707963267948966,
+            unconstrained: true,
+            child: pw.SizedBox(width: h, height: w, child: child),
+          ),
+        );
+      });
+
   pw.Widget _numberedTable(List<String> cols, List<double> flex, {double rowMm = 7}) => pw.Expanded(
         child: pw.LayoutBuilder(builder: (ctx, c) {
           final n = (((c?.maxHeight ?? 0) / mm - 7) / rowMm).floor().clamp(1, 60);

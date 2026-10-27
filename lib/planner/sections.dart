@@ -31,6 +31,7 @@ enum SectionKind {
   grades, // Registro de evaluaciones simple (profesora)
   subjectPlanner, // Planificador por asignatura o curso
   studentList, // Lista de alumnos
+  studentData, // Datos de alumnos (45 filas, alternadas)
   studentCards, // Fichas de seguimiento
   gradesCl, // Registro de calificaciones (escala chilena)
   rubrics, // Rúbricas e instrumentos de evaluación
@@ -82,10 +83,11 @@ const sectionCatalog = <SectionDef>[
   SectionDef(SectionKind.patients, 'Organización de pacientes', 'Ficha: paciente, contacto, motivo, evaluaciones, informes', Placement.back, 6),
   SectionDef(SectionKind.sessions, 'Registro de sesiones', 'Fecha, paciente, asistió / inasistencia / reagendado', Placement.back, 8),
   SectionDef(SectionKind.projects, 'Tareas laborales y proyectos', 'Proyecto, pasos, fecha límite, estado', Placement.back, 4),
-  SectionDef(SectionKind.classes, 'Horario de clases y cursos', 'Horario semanal por curso (profesora)', Placement.back, 2),
+  SectionDef(SectionKind.classes, 'Horario de clases y cursos', 'Horario semanal en horizontal (se lee girando la agenda)', Placement.back, 2),
   SectionDef(SectionKind.grades, 'Evaluaciones (simple)', 'Tabla simple curso / alumno / notas (profesora)', Placement.back, 6),
   SectionDef(SectionKind.subjectPlanner, 'Planificador por asignatura o curso', 'Fecha, contenido u OA, actividad y recursos', Placement.back, 6),
   SectionDef(SectionKind.studentList, 'Lista de alumnos', 'N.°, nombre, apoderado, teléfono y observaciones', Placement.back, 4),
+  SectionDef(SectionKind.studentData, 'Datos de alumnos (45)', 'Listado del 1 al 45 con filas alternadas blanca / color', Placement.back, 1),
   SectionDef(SectionKind.studentCards, 'Fichas de seguimiento', '2 fichas por página: fortalezas, dificultades y acuerdos', Placement.back, 4),
   SectionDef(SectionKind.gradesCl, 'Registro de calificaciones', 'Notas 1,0 a 7,0 con promedio (escala chilena, 60 % de exigencia)', Placement.back, 6),
   SectionDef(SectionKind.rubrics, 'Rúbricas e instrumentos de evaluación', 'Criterios por 4 niveles de logro y observaciones', Placement.back, 3),
@@ -142,7 +144,7 @@ final plannerTemplates = <PlannerTemplate>[
   PlannerTemplate('profesor', 'Profesor/a (Chile)', () => _c([
         SectionKind.teacherInfo, SectionKind.yearCalendar, SectionKind.schoolCalendar, SectionKind.holidaysList, SectionKind.ephemerides,
         SectionKind.birthdays, SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.unitPlan, SectionKind.attendance,
-        SectionKind.weekly, SectionKind.classes, SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentCards,
+        SectionKind.weekly, SectionKind.classes, SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentData, SectionKind.studentCards,
         SectionKind.gradesCl, SectionKind.rubrics, SectionKind.parentMeetings, SectionKind.staffMeetings,
         SectionKind.tasks, SectionKind.notes, SectionKind.ideas, SectionKind.namePage,
       ], off: [SectionKind.owner, SectionKind.grades, SectionKind.finance, SectionKind.habits, SectionKind.schedule, SectionKind.daily,
@@ -166,7 +168,7 @@ final plannerTemplates = <PlannerTemplate>[
             SectionKind.daily, SectionKind.meetings, SectionKind.monthBalance, SectionKind.tasks, SectionKind.patients, SectionKind.sessions,
             SectionKind.projects, SectionKind.classes, SectionKind.grades, SectionKind.notes, SectionKind.ideas,
             SectionKind.teacherInfo, SectionKind.schoolCalendar, SectionKind.ephemerides, SectionKind.unitPlan, SectionKind.attendance,
-            SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentCards, SectionKind.gradesCl, SectionKind.rubrics,
+            SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentData, SectionKind.studentCards, SectionKind.gradesCl, SectionKind.rubrics,
             SectionKind.parentMeetings, SectionKind.staffMeetings])),
 ];
 
