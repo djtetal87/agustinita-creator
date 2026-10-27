@@ -143,6 +143,44 @@ class StyleSpec {
     );
   }
 
+  /// Para quién es la agenda: cambia adornos, personaje y paleta de la IA.
+  static const audiences = <String, String>{
+    'mujer': 'Mujer',
+    'hombre': 'Hombre',
+    'nina': 'Niña',
+    'nino': 'Niño',
+    'neutro': 'Neutro / unisex',
+  };
+
+  /// Color de texto sugerido al elegir el público.
+  static const audienceInk = <String, String>{
+    'mujer': '#6B4A7E',
+    'hombre': '#2F4A6D',
+    'nina': '#C2527F',
+    'nino': '#2F6D8F',
+    'neutro': '#444444',
+  };
+
+  static const _audiencePrompt = <String, String>{
+    'mujer': 'PÚBLICO: agenda para una MUJER ADULTA. Diseño delicado y elegante; puede llevar flores, hojas y detalles suaves.',
+    'hombre': 'PÚBLICO: agenda para un HOMBRE ADULTO. Diseño MASCULINO y sobrio: líneas limpias, formas geométricas, texturas (madera, cuero, papel kraft, pizarra), hojas verdes o elementos del tema. PROHIBIDO: rosa, lila, flores delicadas, corazones, lazos, brillos, estrellitas, encaje y cualquier adorno femenino o kawaii. Paleta de tonos azul marino, gris, verde oliva, café, arena o negro.',
+    'nina': 'PÚBLICO: agenda para una NIÑA. Diseño infantil, alegre y tierno, colores vivos pero suaves, personajes y adornos lúdicos.',
+    'nino': 'PÚBLICO: agenda para un NIÑO. Diseño infantil, alegre y aventurero: dinosaurios, espacio, autos, deportes, animales o el tema indicado; colores vivos (azul, verde, naranja, amarillo). PROHIBIDO: rosa, lila, flores delicadas, corazones, lazos y adornos femeninos.',
+    'neutro': 'PÚBLICO: agenda UNISEX para adulto. Diseño neutro y minimalista, sin elementos marcadamente femeninos ni masculinos: geometría suave, hojas verdes, tonos tierra, beige, gris y blanco. Sin rosa, sin corazones, sin lazos.',
+  };
+
+  /// Copia del estilo con la indicación de público al inicio del prompt
+  /// (va antes de la estética para que mande sobre ella).
+  StyleSpec withAudience(String audience) {
+    final a = _audiencePrompt[audience];
+    if (a == null) return this;
+    return StyleSpec(
+      id: id, label: label, frame: frame, titleBg: titleBg, titleFg: titleFg,
+      rule: rule, accent: accent,
+      aiPrompt: '$a ESTÉTICA BASE (adaptada al público): $aiPrompt',
+    );
+  }
+
   static PdfColor? parseHex(String s) {
     var h = s.trim().replaceAll('#', '');
     if (h.length == 3) h = h.split('').map((c) => '$c$c').join();

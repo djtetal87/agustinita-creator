@@ -120,6 +120,18 @@ class ArtPreview extends StatelessWidget {
   }
 }
 
+/// "¿Para quién es?" — Mujer / Hombre / Niña / Niño / Neutro.
+class AudienceChips extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onChanged;
+  const AudienceChips({super.key, required this.selected, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final e in StyleSpec.audiences.entries)
+          ChoiceChip(label: Text(e.value), selected: selected == e.key, onSelected: (_) => onChanged(e.key)),
+      ]);
+}
+
 /// Selector de color del texto del papel: muestras + hex + "tomar de la portada".
 class InkPicker extends StatelessWidget {
   final String hex;

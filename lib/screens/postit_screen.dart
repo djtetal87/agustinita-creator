@@ -43,8 +43,21 @@ class _PostitScreenState extends State<PostitScreen> {
   StyleSpec get _style {
     final base = StyleSpec.byId(_styleId);
     final ink = StyleSpec.parseHex(widget.settings.inkHex);
-    return ink == null ? base : base.withInk(ink);
+    final inked = ink == null ? base : base.withInk(ink);
+    return inked.withAudience(widget.settings.audience);
   }
+
+  void _setAudience(String a) => setState(() {
+        widget.settings.audience = a;
+        // color de texto y títulos acordes al público (se pueden cambiar después)
+        widget.settings.inkHex = StyleSpec.audienceInk[a] ?? widget.settings.inkHex;
+        if (a == 'hombre' || a == 'nino' || a == 'neutro') {
+          widget.settings.titleStyle = 'plain';
+        } else if (widget.settings.titleStyle == 'plain') {
+          widget.settings.titleStyle = 'dual';
+        }
+        widget.settings.save();
+      });
   PostitSpec get p => widget.spec;
 
   @override
@@ -105,6 +118,11 @@ class _PostitScreenState extends State<PostitScreen> {
         Text('${p.perSheet} por hoja carta, con marcas de corte. La IA dibuja el marco y el personaje; la pauta y el título los pone la app.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 16),
+        const SectionTitle('¿Para quién es?'),
+        AudienceChips(selected: widget.settings.audience, onChanged: _setAudience),
+        const SizedBox(height: 4),
+        Text('Cambia los adornos y el personaje que dibuja la IA, el color del texto y el estilo de títulos (Hombre/Niño: sin flores, rosa ni corazones).',
+            style: Theme.of(context).textTheme.bodySmall),
         const SectionTitle('Estilo'),
         StyleChips(selected: _styleId, onChanged: (v) => setState(() => _styleId = v)),
         const SizedBox(height: 16),

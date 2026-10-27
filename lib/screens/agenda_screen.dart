@@ -40,7 +40,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
         .where((e) => '#${e.value.toRadixString(16).substring(2).toUpperCase()}' == hex.toUpperCase())
         .map((e) => e.key)
         .firstOrNull;
-    return 'tonos de ${name?.toLowerCase() ?? hex}, blanco y beige suave';
+    final a = widget.settings.audience;
+    final base = (a == 'hombre' || a == 'nino') ? 'gris y blanco' : 'blanco y beige suave';
+    return 'tonos de ${name?.toLowerCase() ?? hex}, $base';
   }
   String get _name => _nameC.text;
   String get _phrase => _phraseC.text;
@@ -88,8 +90,21 @@ class _AgendaScreenState extends State<AgendaScreen> {
   StyleSpec get _style {
     final base = StyleSpec.byId(_styleId);
     final ink = StyleSpec.parseHex(widget.settings.inkHex);
-    return ink == null ? base : base.withInk(ink);
+    final inked = ink == null ? base : base.withInk(ink);
+    return inked.withAudience(widget.settings.audience);
   }
+
+  void _setAudience(String a) => setState(() {
+        widget.settings.audience = a;
+        // color de texto y títulos acordes al público (se pueden cambiar después)
+        widget.settings.inkHex = StyleSpec.audienceInk[a] ?? widget.settings.inkHex;
+        if (a == 'hombre' || a == 'nino' || a == 'neutro') {
+          widget.settings.titleStyle = 'plain';
+        } else if (widget.settings.titleStyle == 'plain') {
+          widget.settings.titleStyle = 'dual';
+        }
+        widget.settings.save();
+      });
   List<Color> _coverColors = const [];
 
   Future<void> _refreshCoverColors() async {
@@ -412,6 +427,11 @@ class _AgendaScreenState extends State<AgendaScreen> {
         const SizedBox(height: 16),
         Field('Nombre de la persona (opcional si la portada ya lo trae)', 'Agustina', (_) {}, icon: Icons.person, controller: _nameC),
         Field('Texto a decir (frase, opcional)', 'Sigue brillando cada día', (_) {}, icon: Icons.format_quote, controller: _phraseC),
+        const SectionTitle('¿Para quién es?'),
+        AudienceChips(selected: widget.settings.audience, onChanged: _setAudience),
+        const SizedBox(height: 4),
+        Text('Cambia los adornos y el personaje que dibuja la IA, el color del texto y el estilo de títulos (Hombre/Niño: sin flores, rosa ni corazones).',
+            style: Theme.of(context).textTheme.bodySmall),
         const SectionTitle('Estilo'),
         StyleChips(selected: _styleId, onChanged: (v) => setState(() => _styleId = v)),
         const SizedBox(height: 16),
