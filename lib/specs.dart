@@ -12,7 +12,7 @@ const double letterH = 279.4;
 
 /// Agenda anillada (anillado 15 mm, impresión doble cara).
 /// Hoja horizontal cortada a la mitad: 2 páginas por cara.
-/// Dos formatos: A5 (hoja A4) y media carta (hoja carta).
+/// Tres formatos: A5 (hoja A4), media carta (hoja carta) y A6 (hoja A5).
 class AgendaSpec {
   final String id;
   final String label;
@@ -20,6 +20,21 @@ class AgendaSpec {
   final double sheetH;
   final double coverSheetW; // hoja vertical donde va la portada sola
   final double coverSheetH;
+  final String pageName; // nombre corto de la página: A5, A6, media carta
+  final String sheetName; // nombre corto de la hoja con 2 páginas: A4, A5, carta
+  // márgenes (mm); los valores por defecto son los de A5 / media carta
+  final double ringMargin; // franja para los anillos
+  final double outerMargin; // margen opuesto al anillado
+  final double frameTop;
+  final double frameRadius;
+  final double innerPad; // del marco al contenido
+  final double safeRing; // área segura (arte a página completa): lado anillado
+  final double safeOuter; // lado exterior
+  final double safeTop;
+  final double safeBottom;
+  /// Escala del contenido: 1 = tamaño normal. En páginas más chicas (A6) el
+  /// contenido se diseña como en A5 y se reduce por este factor.
+  final double contentScale;
 
   const AgendaSpec({
     required this.id,
@@ -28,26 +43,43 @@ class AgendaSpec {
     required this.sheetH,
     required this.coverSheetW,
     required this.coverSheetH,
+    this.pageName = '',
+    this.sheetName = '',
+    this.ringMargin = 15.0,
+    this.outerMargin = 5.0,
+    this.frameTop = 15.0,
+    this.frameRadius = 4.0,
+    this.innerPad = 6.0,
+    this.safeRing = 20.0,
+    this.safeOuter = 10.0,
+    this.safeTop = 14.0,
+    this.safeBottom = 14.0,
+    this.contentScale = 1.0,
   });
 
   static const a5 = AgendaSpec(
       id: 'a5', label: 'A5 (148 × 210 mm)',
-      sheetW: 297.0, sheetH: 210.0, coverSheetW: 210.0, coverSheetH: 297.0);
+      sheetW: 297.0, sheetH: 210.0, coverSheetW: 210.0, coverSheetH: 297.0,
+      pageName: 'A5', sheetName: 'A4');
   static const carta = AgendaSpec(
       id: 'carta', label: 'Media carta (139,7 × 215,9 mm)',
-      sheetW: letterH, sheetH: letterW, coverSheetW: letterW, coverSheetH: letterH);
-  static const all = [a5, carta];
+      sheetW: letterH, sheetH: letterW, coverSheetW: letterW, coverSheetH: letterH,
+      pageName: 'media carta', sheetName: 'carta');
+  /// A6 (105 × 148 mm): 2 páginas por hoja A5 horizontal (210 × 148 mm).
+  static const a6 = AgendaSpec(
+      id: 'a6', label: 'A6 (105 × 148 mm)',
+      sheetW: 210.0, sheetH: 148.0, coverSheetW: 148.0, coverSheetH: 210.0,
+      pageName: 'A6', sheetName: 'A5',
+      ringMargin: 12.0, outerMargin: 4.0, frameTop: 10.0, frameRadius: 3.0, innerPad: 4.0,
+      safeRing: 16.0, safeOuter: 7.0, safeTop: 10.0, safeBottom: 10.0,
+      contentScale: 0.75);
+  static const all = [a5, carta, a6];
   static AgendaSpec byId(String id) => all.firstWhere((e) => e.id == id, orElse: () => a5);
 
   double get halfW => sheetW / 2; // ancho de cada página
   double get pageH => sheetH;
-  static const double ringMargin = 15.0; // franja para los anillos
-  static const double outerMargin = 5.0; // margen opuesto al anillado
-  static const double frameTop = 15.0;
   double get frameW => halfW - ringMargin - outerMargin;
   double get frameH => pageH - frameTop * 2;
-  static const double frameRadius = 4.0;
-  static const double innerPad = 6.0; // del marco al contenido
   double get coverW => halfW;
   double get coverH => pageH;
 

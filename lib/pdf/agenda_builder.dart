@@ -11,6 +11,7 @@ import '../theme_spec.dart';
 import 'fonts.dart';
 
 part 'planner_pages.dart';
+part 'birthday_pages.dart';
 
 /// Datos que vienen del formulario de Agenda.
 class AgendaJob {
@@ -100,12 +101,29 @@ class AgendaBuilder {
       if (i >= pp.length) return _half(null, number, ringLeft, bleed: bleed);
       final p = pp[i];
       final art = sectionDef(p.kind).artOnly;
-      return _half(_bodyWithNumber(plannerBody(p), number), number, ringLeft, artPage: art, month: p.month, bleed: bleed);
+      return _half(_fitBody(_bodyWithNumber(plannerBody(p), number)), number, ringLeft, artPage: art, month: p.month, bleed: bleed);
     }
     if (i >= job.pages.length) return _half(null, number, ringLeft, bleed: bleed);
     final def = job.pages[i];
     if (def.kind == PageKind.blank) return _half(null, number, ringLeft, bleed: bleed);
-    return _half(_pageBody(def, number), number, ringLeft, artPage: def.kind == PageKind.namePage, bleed: bleed);
+    return _half(_fitBody(_pageBody(def, number)), number, ringLeft, artPage: def.kind == PageKind.namePage, bleed: bleed);
+  }
+
+  /// En tamaños chicos (A6) el contenido se dibuja como en A5 (espacio virtual
+  /// más grande) y se reduce por [AgendaSpec.contentScale]. En A5/carta no hace nada.
+  pw.Widget _fitBody(pw.Widget body) {
+    final k = sp.contentScale;
+    if (k == 1.0) return body;
+    return pw.LayoutBuilder(builder: (ctx, c) {
+      final w = c?.maxWidth ?? 0, h = c?.maxHeight ?? 0;
+      return pw.SizedBox(
+        width: w, height: h,
+        child: pw.FittedBox(
+          fit: pw.BoxFit.contain,
+          child: pw.SizedBox(width: w / k, height: h / k, child: body),
+        ),
+      );
+    });
   }
 
   int get _pageCount => job.plannerPages?.length ?? job.pages.length;
@@ -185,8 +203,8 @@ class AgendaBuilder {
     if (job.fullBleedArt) {
       // ---- Ilustración a página completa + área segura ----
       final W = sp.halfW, H = sp.sheetH;
-      // área segura: 20 mm lado anillado, 10 mm lado exterior, 14 mm arriba/abajo
-      final ringSide = AgendaSpec.ringMargin + 5.0, outer = 10.0, top = 14.0, bottom = 14.0;
+      // área segura (A5: 20 mm lado anillado, 10 mm exterior, 14 mm arriba/abajo)
+      final ringSide = sp.safeRing, outer = sp.safeOuter, top = sp.safeTop, bottom = sp.safeBottom;
       final left = ringLeft ? ringSide : outer;
       final right = ringLeft ? outer : ringSide;
       final charH = (H - top - bottom) * ov.sizePct;
@@ -235,8 +253,8 @@ class AgendaBuilder {
 
     // ---- Modo clásico: marco redondeado ----
     final frameLeft = ringLeft
-        ? AgendaSpec.ringMargin
-        : sp.halfW - AgendaSpec.ringMargin - sp.frameW;
+        ? sp.ringMargin
+        : sp.halfW - sp.ringMargin - sp.frameW;
     final charH = sp.frameH * ov.sizePct;
     return pw.SizedBox(
       width: sp.halfW * mm,
@@ -244,7 +262,7 @@ class AgendaBuilder {
       child: pw.Stack(children: [
         // guía punteada del anillado (no se imprime fuerte)
         pw.Positioned(
-          left: (ringLeft ? AgendaSpec.ringMargin : sp.halfW - AgendaSpec.ringMargin) * mm,
+          left: (ringLeft ? sp.ringMargin : sp.halfW - sp.ringMargin) * mm,
           top: 0,
           child: pw.Container(
             width: 0.3,
@@ -260,19 +278,19 @@ class AgendaBuilder {
         if (!isBlank)
           pw.Positioned(
             left: frameLeft * mm,
-            top: AgendaSpec.frameTop * mm,
+            top: sp.frameTop * mm,
             child: pw.Container(
               width: sp.frameW * mm,
               height: sp.frameH * mm,
               decoration: pw.BoxDecoration(
                 border: pw.Border.all(color: s.frame, width: 0.8),
-                borderRadius: pw.BorderRadius.circular(AgendaSpec.frameRadius * mm),
+                borderRadius: pw.BorderRadius.circular(sp.frameRadius * mm),
               ),
               child: pw.Stack(fit: pw.StackFit.expand, children: [
                 if (bg != null)
                   pw.ClipRRect(
-                    horizontalRadius: AgendaSpec.frameRadius * mm,
-                    verticalRadius: AgendaSpec.frameRadius * mm,
+                    horizontalRadius: sp.frameRadius * mm,
+                    verticalRadius: sp.frameRadius * mm,
                     child: pw.Image(bg, fit: pw.BoxFit.cover),
                   ),
                 if (showChar)
@@ -288,8 +306,8 @@ class AgendaBuilder {
                   ),
                 pw.Padding(
                   padding: artPage || bg == null
-                      ? pw.EdgeInsets.all(AgendaSpec.innerPad * mm)
-                      : pw.EdgeInsets.fromLTRB(12 * mm, 11 * mm, 12 * mm, 12 * mm),
+                      ? pw.EdgeInsets.all(sp.innerPad * mm)
+                      : pw.EdgeInsets.fromLTRB(12 * mm * sp.contentScale, 11 * mm * sp.contentScale, 12 * mm * sp.contentScale, 12 * mm * sp.contentScale),
                   child: body!,
                 ),
               ]),
@@ -599,8 +617,8 @@ class AgendaBuilder {
   }
 
   pw.Widget _customLayout(CustomLayout l) {
-    final availH = sp.frameH - AgendaSpec.innerPad * 2 - 18;
-    final availW = sp.frameW - AgendaSpec.innerPad * 2;
+    final availH = (sp.frameH - sp.innerPad * 2 - 18) / sp.contentScale;
+    final availW = (sp.frameW - sp.innerPad * 2) / sp.contentScale;
     switch (l) {
       case CustomLayout.ruled:
         return _ruled(9);

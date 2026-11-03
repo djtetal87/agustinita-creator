@@ -41,6 +41,8 @@ enum SectionKind {
   ideas, // Ideas y anotaciones libres (punteado)
   // páginas de la agenda infantil
   kidHandwriting, kidDrawWrite, kidFeelings, kidTherapyTasks, kidHomework, kidSavings, kidAchievements, kidCreative,
+  // libro de cumpleaños / firmas
+  bdayWelcome, bdayInstructions, bdayGuests, bdayWishes, bdayMessages, bdayMemories, bdayAdvice, bdayPhotos, bdayClosing, bdayFutureLetter,
   custom, // Página extra definida por el usuario (título + pauta)
   namePage, // Página final con nombre, frase y personaje
 }
@@ -67,6 +69,16 @@ const sectionCatalog = <SectionDef>[
   SectionDef(SectionKind.ephemerides, 'Efemérides chilenas', 'Fechas típicas de planificación escolar, por mes', Placement.front, 2),
   SectionDef(SectionKind.birthdays, 'Cumpleaños y fechas importantes', 'Lista por mes', Placement.front, 2),
   SectionDef(SectionKind.yearGoals, 'Objetivos del año', 'Metas anuales', Placement.front, 1),
+  SectionDef(SectionKind.bdayWelcome, 'Bienvenida', 'Título, edad, fecha, lugar y foto del festejado', Placement.front, 1),
+  SectionDef(SectionKind.bdayInstructions, 'Instrucciones', 'Cómo usar el libro, 7 pasos numerados', Placement.front, 1),
+  SectionDef(SectionKind.bdayGuests, 'Lista de invitados / firmas', 'Filas numeradas: nombre y firma, alternadas', Placement.front, 1),
+  SectionDef(SectionKind.bdayWishes, 'Cartitas de deseos', '2 cartitas por página: para, te deseo y con cariño', Placement.front, 6),
+  SectionDef(SectionKind.bdayMessages, 'Mensajes y dedicatorias', 'Páginas rayadas con nombre y firma', Placement.front, 8),
+  SectionDef(SectionKind.bdayMemories, 'Recuerdos y anécdotas', '3 bloques: te conocí cuando, mejor recuerdo, algo inolvidable', Placement.front, 4),
+  SectionDef(SectionKind.bdayAdvice, 'Consejos y predicciones', 'Consejo, en 5 años te veo y predicciones Sí / No', Placement.front, 4),
+  SectionDef(SectionKind.bdayPhotos, 'Fotografías de la celebración', 'Marcos con esquineros: 1, 2 o 4 fotos por página', Placement.front, 6),
+  SectionDef(SectionKind.bdayClosing, 'Cierre', 'Gracias por venir, mensaje del festejado y foto grupal', Placement.front, 1),
+  SectionDef(SectionKind.bdayFutureLetter, 'Carta al futuro', 'Para abrir en un próximo cumpleaños, con sello', Placement.front, 2),
   SectionDef(SectionKind.monthDivider, 'Separador de mes', 'Arte completo con el personaje y el nombre del mes', Placement.perMonth, 1, artOnly: true),
   SectionDef(SectionKind.monthPlan, 'Planificación mensual', 'Grilla del mes con notas', Placement.perMonth, 1),
   SectionDef(SectionKind.unitPlan, 'Planificación de unidades', 'Unidad, objetivo de aprendizaje (OA), semanas y evaluación', Placement.perMonth, 1),
@@ -162,6 +174,11 @@ final plannerTemplates = <PlannerTemplate>[
         SectionKind.kidHandwriting, SectionKind.kidDrawWrite, SectionKind.kidFeelings, SectionKind.kidTherapyTasks,
         SectionKind.kidHomework, SectionKind.kidSavings, SectionKind.kidAchievements, SectionKind.kidCreative, SectionKind.namePage,
       ], pages: {SectionKind.notes: 4}, off: [SectionKind.birthdays, SectionKind.monthDivider, SectionKind.monthPlan, SectionKind.weekly, SectionKind.tasks, SectionKind.ideas])),
+  PlannerTemplate('cumple', 'Cumpleaños / libro de firmas', () => _c([
+        SectionKind.bdayWelcome, SectionKind.bdayInstructions, SectionKind.bdayGuests, SectionKind.bdayWishes, SectionKind.bdayMessages,
+        SectionKind.bdayMemories, SectionKind.bdayAdvice, SectionKind.bdayPhotos, SectionKind.bdayClosing, SectionKind.bdayFutureLetter,
+        SectionKind.namePage,
+      ], off: [SectionKind.owner, SectionKind.yearCalendar, SectionKind.birthdays, SectionKind.notes, SectionKind.ideas, SectionKind.tasks])),
   PlannerTemplate('libre', 'Armar desde cero', () => _c([SectionKind.owner, SectionKind.namePage],
       off: [SectionKind.yearCalendar, SectionKind.holidaysList, SectionKind.birthdays, SectionKind.yearGoals, SectionKind.monthDivider,
             SectionKind.monthPlan, SectionKind.monthGoals, SectionKind.finance, SectionKind.habits, SectionKind.weekly, SectionKind.schedule,
@@ -169,7 +186,9 @@ final plannerTemplates = <PlannerTemplate>[
             SectionKind.projects, SectionKind.classes, SectionKind.grades, SectionKind.notes, SectionKind.ideas,
             SectionKind.teacherInfo, SectionKind.schoolCalendar, SectionKind.ephemerides, SectionKind.unitPlan, SectionKind.attendance,
             SectionKind.subjectPlanner, SectionKind.studentList, SectionKind.studentData, SectionKind.studentCards, SectionKind.gradesCl, SectionKind.rubrics,
-            SectionKind.parentMeetings, SectionKind.staffMeetings])),
+            SectionKind.parentMeetings, SectionKind.staffMeetings,
+            SectionKind.bdayWelcome, SectionKind.bdayInstructions, SectionKind.bdayGuests, SectionKind.bdayWishes, SectionKind.bdayMessages,
+            SectionKind.bdayMemories, SectionKind.bdayAdvice, SectionKind.bdayPhotos, SectionKind.bdayClosing, SectionKind.bdayFutureLetter])),
 ];
 
 /// Una página concreta a dibujar.
@@ -275,9 +294,10 @@ String questionnaire() {
   b.writeln('7) ¿Quieres tu caricatura en la portada y separadores? Si es así, mándame una foto de frente.');
   b.writeln('8) Año de la agenda y mes de inicio:');
   b.writeln('9) Secciones que quieres (marca las que sirvan):');
-  for (final s in sectionCatalog.where((s) => !s.kind.name.startsWith('kid') && s.kind != SectionKind.namePage)) {
+  for (final s in sectionCatalog.where((s) => !s.kind.name.startsWith('kid') && !s.kind.name.startsWith('bday') && s.kind != SectionKind.namePage)) {
     b.writeln('   ☐ ${s.label} — ${s.hint}');
   }
+  b.writeln('   ☐ Libro de cumpleaños / firmas — bienvenida, invitados, cartitas, mensajes, recuerdos, fotos y carta al futuro');
   b.writeln('10) ¿Algo más que no esté en la lista?');
   return b.toString();
 }

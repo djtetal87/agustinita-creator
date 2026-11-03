@@ -378,7 +378,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       // la hoja de compartir (que puede quedarse abierta un rato).
       if (mounted) setState(() => _busyExport = false);
       final paths = await exportPdfs({
-        (_singlePages ? 'Agenda_${slug}_Paginas_A5_DobleCara.pdf' : 'Agenda_${slug}_Interior_2xHoja.pdf'): interior,
+        (_singlePages ? 'Agenda_${slug}_Paginas_${AgendaSpec.byId(_sizeId).pageName.replaceAll(' ', '_')}_DobleCara.pdf' : 'Agenda_${slug}_Interior_2xHoja.pdf'): interior,
         'Agenda_${slug}_Portada.pdf': cover,
       });
       if (paths != null && mounted) toast(context, 'PDFs exportados (interior + portada).');
@@ -422,7 +422,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final formItems = <Widget>[
         Text('Agenda / planner anillado', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
-        Text('Interior doble cara (2 páginas por hoja) + portada en hoja aparte. Margen de anillos: 15 mm. A5 por defecto.',
+        Text('Interior doble cara (2 páginas por hoja) + portada en hoja aparte. Margen de anillos: 15 mm (12 mm en A6). A5 por defecto.',
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 16),
         Field('Nombre de la persona (opcional si la portada ya lo trae)', 'Agustina', (_) {}, icon: Icons.person, controller: _nameC),
@@ -580,10 +580,10 @@ class _AgendaScreenState extends State<AgendaScreen> {
         Builder(builder: (ctx) {
           final n = _plannerPages().length;
           final sheets = (n / 2).ceil();
-          final sz = AgendaSpec.byId(_sizeId).id == 'a5';
+          final spz = AgendaSpec.byId(_sizeId);
           final txt = _singlePages
-              ? 'Total: $n páginas ${sz ? 'A5' : 'media carta'} = $sheets hojas ${sz ? 'A5' : 'media carta'} impresas a doble cara'
-              : 'Total: $n páginas = $sheets hojas ${sz ? 'A4' : 'carta'} a doble cara (2 páginas por cara, cortar al medio)';
+              ? 'Total: $n páginas ${spz.pageName} = $sheets hojas ${spz.pageName} impresas a doble cara'
+              : 'Total: $n páginas = $sheets hojas ${spz.sheetName} a doble cara (2 páginas por cara, cortar al medio)';
           return Text(txt, style: Theme.of(context).textTheme.titleSmall);
         }),
         const SizedBox(height: 8),
@@ -707,8 +707,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
           contentPadding: EdgeInsets.zero,
           title: const Text('Una página por hoja (para doble cara)'),
           subtitle: Text(_singlePages
-              ? 'Cada hoja del PDF es una página ${AgendaSpec.byId(_sizeId).id == 'a5' ? 'A5' : 'media carta'}. Imprime a doble cara, sin cortar.'
-              : 'Dos páginas por hoja ${AgendaSpec.byId(_sizeId).id == 'a5' ? 'A4' : 'carta'} horizontal, para cortar al medio.'),
+              ? 'Cada hoja del PDF es una página ${AgendaSpec.byId(_sizeId).pageName}. Imprime a doble cara, sin cortar.'
+              : 'Dos páginas por hoja ${AgendaSpec.byId(_sizeId).sheetName} horizontal, para cortar al medio.'),
           value: _singlePages,
           onChanged: (v) => setState(() => _singlePages = v),
         ),

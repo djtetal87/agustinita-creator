@@ -785,6 +785,17 @@ extension PlannerPagesExt on AgendaBuilder {
         return _pageBody(const PageDef(PageKind.achievements), 0, bare: true);
       case SectionKind.kidCreative:
         return _pageBody(const PageDef(PageKind.creative), 0, bare: true);
+      case SectionKind.bdayWelcome:
+      case SectionKind.bdayInstructions:
+      case SectionKind.bdayGuests:
+      case SectionKind.bdayWishes:
+      case SectionKind.bdayMessages:
+      case SectionKind.bdayMemories:
+      case SectionKind.bdayAdvice:
+      case SectionKind.bdayPhotos:
+      case SectionKind.bdayClosing:
+      case SectionKind.bdayFutureLetter:
+        return _bdayBody(p);
       case SectionKind.custom:
         return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           _title(p.title ?? ''),
