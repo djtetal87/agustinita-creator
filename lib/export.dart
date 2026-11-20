@@ -70,3 +70,29 @@ Future<Uint8List?> pickImage() async {
   if (x == null) return null;
   return x.readAsBytes();
 }
+
+/// Elige varias imágenes a la vez (sin reducir tamaño en iOS: son diseños para imprimir).
+Future<List<Uint8List>> pickImages() async {
+  if (!kIsWeb && Platform.isIOS) {
+    final xs = await ImagePicker().pickMultiImage();
+    return [for (final x in xs) await x.readAsBytes()];
+  }
+  final xs = await openFiles(acceptedTypeGroups: const [
+    XTypeGroup(label: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'heic', 'webp']),
+  ]);
+  return [for (final x in xs) await x.readAsBytes()];
+}
+
+/// Elige una imagen a tamaño completo (para impresión).
+Future<Uint8List?> pickImageFull() async {
+  if (!kIsWeb && Platform.isIOS) {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (x == null) return null;
+    return x.readAsBytes();
+  }
+  final x = await openFile(acceptedTypeGroups: const [
+    XTypeGroup(label: 'Imágenes', extensions: ['png', 'jpg', 'jpeg', 'heic', 'webp']),
+  ]);
+  if (x == null) return null;
+  return x.readAsBytes();
+}

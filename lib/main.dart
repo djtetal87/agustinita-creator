@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_settings.dart';
 import 'screens/agenda_screen.dart';
+import 'screens/mini_booklet_screen.dart';
 import 'screens/postit_screen.dart';
 import 'screens/settings_screen.dart';
 import 'specs.dart';
@@ -45,7 +46,7 @@ class _ShellState extends State<Shell> {
     super.initState();
     AppSettings.load().then((s) => setState(() {
           _settings = s;
-          if (!s.isConfigured) _index = 4;
+          if (!s.isConfigured) _index = 5;
         }));
   }
 
@@ -59,6 +60,7 @@ class _ShellState extends State<Shell> {
       PostitScreen(settings: s, spec: PostitSpec.square),
       PostitScreen(settings: s, spec: PostitSpec.horizontal),
       PostitScreen(settings: s, spec: PostitSpec.vertical),
+      MiniBookletScreen(settings: s),
       SettingsScreen(settings: s, onSaved: () => setState(() {})),
     ];
 
@@ -68,6 +70,7 @@ class _ShellState extends State<Shell> {
       (Icons.crop_square_outlined, Icons.crop_square, 'Post-it cuadrado'),
       (Icons.crop_landscape_outlined, Icons.crop_landscape, 'Post-it horizontal'),
       (Icons.crop_portrait_outlined, Icons.crop_portrait, 'Post-it vertical'),
+      (Icons.auto_stories_outlined, Icons.auto_stories, 'Mini agenda navideña'),
       (Icons.settings_outlined, Icons.settings, 'Ajustes'),
     ];
 
@@ -102,7 +105,7 @@ class _ShellState extends State<Shell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
           for (final d in dest)
-            NavigationDestination(icon: Icon(d.$1), selectedIcon: Icon(d.$2), label: d.$3.replaceAll('Post-it ', '')),
+            NavigationDestination(icon: Icon(d.$1), selectedIcon: Icon(d.$2), label: d.$3.replaceAll('Post-it ', '').replaceAll(' navideña', '')),
         ],
       ),
     );

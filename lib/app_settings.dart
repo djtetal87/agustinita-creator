@@ -7,6 +7,8 @@ class AppSettings {
   static const _kTitleStyle = 'title_style';
   static const _kInk = 'ink_hex';
   static const _kAudience = 'audience';
+  static const _kBackX = 'back_offset_x';
+  static const _kBackY = 'back_offset_y';
 
   static const falModels = <String, String>{
     'fal-ai/flux-pro/v1.1': 'Flux Pro 1.1 — mejor calidad, ~4 ¢',
@@ -20,6 +22,8 @@ class AppSettings {
   String titleStyle; // dual · script · plain
   String inkHex; // color del texto del papel, '' = paleta del estilo
   String audience = 'mujer'; // mujer · hombre · nina · nino · neutro
+  double backOffsetX = 0; // mm, ajuste del reverso (mini agenda)
+  double backOffsetY = 0;
   AppSettings({required this.falKey, required this.falModel, this.titleScript = 'stylescript', this.titleStyle = 'dual', this.inkHex = '#6B4A7E'});
 
   static Future<AppSettings> load() async {
@@ -30,7 +34,10 @@ class AppSettings {
       titleScript: p.getString(_kScript) ?? 'stylescript',
       titleStyle: p.getString(_kTitleStyle) ?? 'dual',
       inkHex: p.getString(_kInk) ?? '#6B4A7E',
-    )..audience = p.getString(_kAudience) ?? 'mujer';
+    )
+      ..audience = p.getString(_kAudience) ?? 'mujer'
+      ..backOffsetX = p.getDouble(_kBackX) ?? 0
+      ..backOffsetY = p.getDouble(_kBackY) ?? 0;
   }
 
   Future<void> save() async {
@@ -41,6 +48,8 @@ class AppSettings {
     await p.setString(_kTitleStyle, titleStyle);
     await p.setString(_kInk, inkHex);
     await p.setString(_kAudience, audience);
+    await p.setDouble(_kBackX, backOffsetX);
+    await p.setDouble(_kBackY, backOffsetY);
   }
 
   bool get isConfigured => falKey.trim().isNotEmpty;
